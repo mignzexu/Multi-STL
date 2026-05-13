@@ -1,0 +1,26 @@
+class MMVP_Config:
+    def __init__(self):
+        self.model_config = {
+            'downsample_setting': '2,2,2',
+            'hid_S': 32,
+            'hid_T': 192,
+            'rrdb_encoder_num': 2,
+            'rrdb_decoder_num': 2,
+            'rrdb_enhance_num': 2,
+            'use_direct_predictor': True,
+            "learning_rate": 1e-03,
+            "initial_lr": 1e-02,
+            "lr_min": 1e-06,
+            "batch_size": 16,
+            "drop_path" : 0.1,
+            "drop":0.0,
+            "optimizer": "adam",
+            "weight_decay": 0.0,
+            "k_decay": 1.0,
+            "scheduler": "onecycle",
+            "pct_start": 0.3,
+            "warmup_t" : 0, 
+            "warmup_lr_init": 1e-05,
+            "warmup_epoch": 0,
+            "loss_function": "mse",
+        }

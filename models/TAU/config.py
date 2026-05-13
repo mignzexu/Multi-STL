@@ -1,0 +1,26 @@
+class TAU_Config:
+    def __init__(self):
+        self.model_config = {
+            "spatio_kernel_enc": 3,
+            "spatio_kernel_dec": 3,
+            "hid_S" : 32,
+            "hid_T": 256,
+            "N_T" : 8,
+            "N_S": 2,
+            "mlp_ratio" : 8,
+            "alpha": 0.1,
+            "learning_rate": 5e-03,
+            "initial_lr": 1e-02,
+            "lr_min": 1e-06,
+            "batch_size": 16,
+            "drop_path" : 0.1,
+            "drop":0.0,
+            "optimizer": "adam",
+            "weight_decay": 0.0,
+            "k_decay": 1.0,
+            "scheduler": "cosine",
+            "warmup_t" : 0, 
+            "warmup_lr_init": 1e-05,
+            "warmup_epoch": 0,
+            "loss_function": "mse",
+        }

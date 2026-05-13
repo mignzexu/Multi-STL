@@ -1,0 +1,31 @@
+class PredRNNpp_Config:
+    def __init__(self):
+        self.model_config = {
+            "reverse_scheduled_sampling": 0,
+            "r_sampling_step_1": 25000,
+            "r_sampling_step_2": 50000,
+            "r_exp_alpha": 5000,
+            "scheduled_sampling": 1,
+            "sampling_stop_iter": 50000,
+            "sampling_start_value": 1.0,
+            "sampling_changing_rate": 0.00002, # 0.00002
+            "num_hidden": "128,128,128,128",
+            "filter_size": 5,
+            "stride": 1,
+            "patch_size": 2,
+            "layer_norm": 0,
+            "learning_rate": 1e-03,
+            "initial_lr": 1e-02,
+            "lr_min": 1e-06,
+            "batch_size": 16,
+            "drop_path" : 0.1,
+            "drop":0.0,
+            "optimizer": "adam",
+            "weight_decay": 0.0,
+            "k_decay": 1.0,
+            "scheduler": "cosine",
+            "warmup_t" : 0, 
+            "warmup_lr_init": 1e-05,
+            "warmup_epoch": 0,
+            "loss_function": "mse",
+        }

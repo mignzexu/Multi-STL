@@ -175,19 +175,26 @@ class Model(System):
     def training_step(self, batch, batch_idx):
         batch_x, batch_y = batch
         loss, _ = self.loss_bridge(self, batch_x, batch_y)
-        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=False)
+
+        # 不在这里 self.log(sync_dist=True)。
+        # loss 统计交给 System.on_train_batch_end + on_train_epoch_end。
         return {
             "loss": loss,
-            "train_loss": loss.detach().cpu().item(),
+            "train_loss": loss.detach(),
+            "batch_size": batch_x.shape[0],
         }
 
     def validation_step(self, batch, batch_idx):
         batch_x, batch_y = batch
         loss, output = self.loss_bridge(self, batch_x, batch_y)
-        label = batch_y[:, :, self.label_idx[0] : self.label_idx[1], :, :]
-        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=False)
+
+        label = batch_y[:, :, self.label_idx[0]: self.label_idx[1], :, :]
+
+        # 不在这里 self.log(sync_dist=True)。
+        # val_loss 统计和 ModelCheckpoint 监控值由 System.on_validation_epoch_end 统一写入。
         return {
-            "val_loss": loss.detach().cpu().item(),
+            "val_loss": loss.detach(),
+            "batch_size": batch_x.shape[0],
             "output": output["pred"].detach(),
             "label": label.detach(),
         }

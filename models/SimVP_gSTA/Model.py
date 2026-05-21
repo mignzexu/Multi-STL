@@ -151,24 +151,29 @@ class Model(System):
         pred = self.model(batch_x)
         label = batch_y[:, :, self.label_idx[0] : self.label_idx[1], :, :]
         loss = self.criterion(pred, label)
-        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=False)
-        return {
-            "loss": loss, 
-            "train_loss": loss.detach().cpu().item()
-            }
-    
-    def validation_step(self, batch, batch_idx):
 
+        # 不在这里 self.log(sync_dist=True)。
+        # loss 统计交给 System.on_train_batch_end + on_train_epoch_end 处理。
+        return {
+            "loss": loss,
+            "train_loss": loss.detach(),
+            "batch_size": batch_x.shape[0],
+        }
+
+    def validation_step(self, batch, batch_idx):
         batch_x, batch_y = batch
         pred = self.model(batch_x)
         label = batch_y[:, :, self.label_idx[0] : self.label_idx[1], :, :]
-        loss = self.criterion(pred, label)  
-        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=False)
+        loss = self.criterion(pred, label)
+
+        # 不在这里 self.log(sync_dist=True)。
+        # val_loss 统计和 ModelCheckpoint 监控值由 System.on_validation_epoch_end 统一写入。
         return {
-            "val_loss": loss.detach().cpu().item(),
+            "val_loss": loss.detach(),
+            "batch_size": batch_x.shape[0],
             "output": pred.detach(),
-            "label": label.detach()
-            }
+            "label": label.detach(),
+        }
 
     
 

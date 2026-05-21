@@ -1,5 +1,5 @@
 from .cfg_up import config_update
-from .metrics import Recorder
+from .metrics_v2 import Recorder
 from .cfg import Logger
 from.log import train_config, save_loger
 from .std_method import  Z_Score, Z_Score_SD

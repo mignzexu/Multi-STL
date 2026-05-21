@@ -163,6 +163,13 @@ def test(configs):
         with open(config_file, "r", encoding="utf-8") as f:
             test_configs = json.load(f)
         test_configs = argparse.Namespace(**test_configs)
+
+        # 用 CLI 覆盖 JSON 中的 GPU 和 batch 配置，实现灵活的单卡/多卡/CPU 测试
+        test_configs.batch_size = configs.batch_size
+        test_configs.accelerator = configs.accelerator
+        test_configs.gpu_count = configs.gpu_count
+        test_configs.devices = configs.devices
+
         print("工程配置文件加载成功\n")
         
     else:

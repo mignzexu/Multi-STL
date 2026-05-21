@@ -57,9 +57,21 @@ class Trainer(object):
         if pin_memory is None:
             pin_memory = self.configs.accelerator == "gpu"
 
+        # 多卡时从全局 batch_size 切分出每卡 batch_size
+        global_bs = int(self.configs.batch_size)
+        gpu_count = int(getattr(self.configs, "gpu_count", 1))
+        if gpu_count > 1:
+            if global_bs % gpu_count != 0:
+                raise ValueError(
+                    f"batch_size={global_bs} 无法被卡数 {gpu_count} 整除"
+                )
+            per_gpu_bs = global_bs // gpu_count
+        else:
+            per_gpu_bs = global_bs
+
         loader_kwargs = {
             "dataset": dataset,
-            "batch_size": int(self.configs.batch_size),
+            "batch_size": per_gpu_bs,
             "shuffle": shuffle,
             "drop_last": drop_last,
             "num_workers": num_workers,

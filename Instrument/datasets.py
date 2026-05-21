@@ -11,7 +11,7 @@ class Dataset_Instrument:
     def load_dataset(self, mode='train'):
         
         if self.data_name == 'SDweather':
-            from datasets.SDweather import SD_Dataloader, SDweather_config
+            from dataset.SDweather import SD_Dataloader, SDweather_config
 
             if mode == 'train' : 
                 if self.configs.data_config is None:
@@ -31,7 +31,7 @@ class Dataset_Instrument:
                 raise NotImplementedError(f'{mode} mode not implemented')
 
         elif self.data_name == 'weatherbench':
-            from datasets.WeatherBench import WB_Dataloader, WeatherBench_config
+            from dataset.WeatherBench import WB_Dataloader, WeatherBench_config
             
             if mode == 'train':
 

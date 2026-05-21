@@ -39,14 +39,14 @@ class visualizer():
         self.is_gif = self.v_cfg.gif
 
         if self.configs.dataset == "SDweather":
-            from datasets.SDweather import SD_Painter, SD_Dataloader
+            from dataset.SDweather import SD_Painter, SD_Dataloader
 
             self.original_data = SD_Dataloader(self.configs, mode='test')
             self.viser = SD_Painter(self.configs)
 
         elif self.configs.dataset == "weatherbench":
 
-            from datasets.WeatherBench import vis_WB, WB_Dataloader
+            from dataset.WeatherBench import vis_WB, WB_Dataloader
 
             self.original_data = WB_Dataloader(self.configs, mode='test')
             self.viser = vis_WB(self.configs, self.save_dir)
@@ -111,11 +111,11 @@ class visualizer():
     def get_input(self):
         input_data = []
         for idx in self.pred_idx: # [start, caption]
-            data_seq = self.original_data.data[
-                idx[0]:(idx[0] + self.total_seq[0]),:,:,:]
+            data_seq = np.array(self.original_data.data[
+                idx[0]:(idx[0] + self.total_seq[0]),:,:,:])
             input_data.append(data_seq)
-        dataset = torch.stack(input_data, dim=0)  # (samp, T_in, cate, H, W)
-        self.input_data = self.original_data.standardizer.de_standardizing(dataset).numpy()
+        dataset = torch.from_numpy(np.stack(input_data, axis=0))  # (samp, T_in, cate, H, W)
+        self.input_data = dataset.numpy()
     
     def get_pred(self):
         self.pred_data = np.load(os.path.join(self.obj_path,"outputs",'out_data.npy'))
@@ -123,12 +123,12 @@ class visualizer():
     def get_label(self):
         label_data = []
         for idx in self.pred_idx: # [start, caption]
-            data_seq = self.original_data.data[
+            data_seq = np.array(self.original_data.data[
                 (idx[0] + self.total_seq[0]):(idx[0] + sum(self.total_seq)),
-                self.label_idx[0]:self.label_idx[1],:,:]
+                self.label_idx[0]:self.label_idx[1],:,:])
             label_data.append(data_seq)
-        dataset = torch.stack(label_data, dim=0)  # (samp, T_out, cate, H, W)
-        self.label_data = self.original_data.standardizer.de_standardizing(dataset, "metric").numpy()  # (samp, T_out, cate, H, W)
+        dataset = torch.from_numpy(np.stack(label_data, axis=0))  # (samp, T_out, cate, H, W)
+        self.label_data = dataset.numpy()  # (samp, T_out, cate, H, W)
 
 if __name__ == "__main__":
 

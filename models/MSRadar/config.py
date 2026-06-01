@@ -1,9 +1,9 @@
 class MS_RadarFormer_Config:
     def __init__(self):
         self.model_config = {
-            "patch_size": 4,    
-            "model_patch_size": [ 3, 4, 4 ],
-            "window_size": [ 3, 4, 4 ],
+            "patch_size": 2,    
+            "model_patch_size": [ 3, 2, 2 ],
+            "window_size": [ 3, 5, 5 ],
             "embed_dim": 256,
             "num_heads": 16,
             "depths": 6,    

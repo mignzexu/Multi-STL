@@ -217,7 +217,7 @@ class SD_Painter():
             norm=norm,
             aspect='auto',
             extent=[self.lon_min, self.lon_max, self.lat_min, self.lat_max],
-            origin='upper'
+            origin='lower'
         )
         self.draw_panel_title(ax, title_prefix, time)
         return image

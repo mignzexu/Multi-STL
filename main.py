@@ -37,7 +37,7 @@ def create_args():
 
     # 文件路径和保存
     parser.add_argument('--work_dirs', '-wd', type=str, default='work_dirs', help='模型保存路径（默认包含时间戳）') 
-    parser.add_argument('--data_dir', type=str, default="/scratch/mingze/data", help='数据集总路径，内部请按照ReadMe中配置')
+    parser.add_argument('--data_dir', type=str, default="/shares/weather/Split_Data", help='数据集总路径，内部请按照ReadMe中配置')
     parser.add_argument('--save_mode', type=str, default="manual", choices=["auto", "manual"], help='数据集总路径，内部请按照ReadMe中配置')
     parser.add_argument('--test_interval', type=int, default=1, help='测试间隔')
     parser.add_argument('--save_interval', type=int, default=100, help='保存间隔')

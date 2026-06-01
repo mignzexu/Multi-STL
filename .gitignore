@@ -128,7 +128,9 @@ lightning_logs/
 *.swp
 .DS_Store
 *.json
-
+.codegraph
+look.py
+origin
 results
 figs
 .vscode

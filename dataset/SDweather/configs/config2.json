@@ -1,0 +1,18 @@
+{
+    "img_channel": 3,
+    "img_out_channel": 1,
+    "train_range": "20240601-20240601",
+    "valid_range": "20240602-20240602",
+    "test_range" : "20240603-20240603",
+    "in_category": ["CR","CP","CW"],
+    "out_category": ["CP", "CW"],
+    "total_seq": [12, 12],
+    "img_size": [500, 900],
+    "terrain": true,
+    "data_stride": 1,
+    "metrics": [ "mae", "mse", "rmse"],
+    "threshold": [[0.001, 0.01, 0.05], [0.001, 0.01, 0.05]],
+    "standardizing": {
+        "CW": 7.146333
+    }
+}

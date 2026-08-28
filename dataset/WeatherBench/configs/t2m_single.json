@@ -1,0 +1,16 @@
+{
+    "train_range": ["2010", "2015"],
+    "valid_range": ["2016", "2016"],
+    "test_range" : ["2017", "2018"],
+    "in_category": ["t2m"],
+    "out_category": ["t2m"],
+    "total_seq": [12, 12],
+    "test_seq": 12,
+    "resolusion": "5.625",
+    "img_size":[32, 64],
+    "data_stride": 1,
+    "save_interval": 100,
+    "metrics": [ "mae", "mse", "rmse"],
+    "threshold": [[0.00001, 0.0001, 0.0005]],
+    "std_method": "z_score"
+}

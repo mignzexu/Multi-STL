@@ -1,0 +1,14 @@
+{
+    "train_range": "point:ef_train",
+    "valid_range": "point:ef_valid",
+    "test_range" : "point:ef_test",
+    "in_category": ["CW"],
+    "out_category": ["CW"],
+    "total_seq": [18, 18],
+    "test_seq": 18,
+    "img_size": [500, 900],
+    "data_stride": 1,
+    "metrics": [ "mae", "mse", "rmse"],
+    "threshold": [[8.0, 13.9, 20.8]], 
+    "std_method": "z_score_sd"
+}

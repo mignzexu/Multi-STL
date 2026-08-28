@@ -1,0 +1,16 @@
+{
+    "train_range": ["2010", "2015"],
+    "valid_range": ["2016", "2016"],
+    "test_range" : ["2017", "2018"],
+    "in_category": ["tcc", "t2m","w10", "orography"],
+    "out_category": ["w10"],
+    "total_seq": [12, 12],
+    "test_seq": 12,
+    "resolusion": "1.40625",
+    "img_size":[128, 256],
+    "data_stride": 1,
+    "save_interval": 100,
+    "metrics": [ "mae", "mse", "rmse", "cvm"],
+    "threshold": [[8.0, 13.9, 20.8]],
+    "std_method": "z_score"
+}

@@ -1,0 +1,18 @@
+{
+    "train_range": "point:r1",
+    "valid_range": "point:r1",
+    "test_range" : "range:20240414-20240415",
+    "in_category": ["CW","CR","CT", "CL"],
+    "out_category": ["CW"],
+    "total_seq": [12, 12],
+    "test_seq": 12,
+    "img_size": [500, 900],
+    "data_stride": 1,
+    "region": {
+            "lon": "117-120.6",
+            "lat": "37-39"
+        },
+    "metrics": [ "mae", "mse", "rmse"],
+    "threshold": [[8.0, 13.9, 20.8]], 
+    "std_method": "z_score_sd"
+}

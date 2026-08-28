@@ -1,0 +1,16 @@
+{
+    "train_range": ["2010", "2015"],
+    "valid_range": ["2016", "2016"],
+    "test_range": ["2017", "2018"],
+    "in_category": ["z500", "t850", "t2m", "u10", "v10", "orography", "lsm"],
+    "out_category": ["z500", "t850", "t2m", "u10", "v10"],
+    "total_seq": [2, 4],
+    "test_seq": 4,
+    "resolusion": "5.625",
+    "img_size": [32, 64],
+    "data_stride": 1,
+    "save_interval": 100,
+    "metrics": ["mae", "mse", "rmse"],
+    "threshold": [[0.0], [0.0], [0.0], [0.0], [0.0]],
+    "std_method": "z_score"
+}

@@ -1,5 +1,4 @@
-from .ConvLSTM_model import Main
+from .Model import Model
 from .config import ConvLSTM_Config
-from .loss import loss_fn
 
-__all__ = ['Main', 'ConvLSTM_Config', 'loss_fn']
+__all__ = ["Model", "ConvLSTM_Config"]

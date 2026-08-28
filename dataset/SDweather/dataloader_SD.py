@@ -128,7 +128,15 @@ class Mem_Loader:
         offset = 0
         for seg in tqdm(segments, desc=f"{self.mode} 动态模态写入进度"):
             data = self._load_dynamic_segment(seg)
-            seg_len = data.shape[0]
+            seg_len = int(seg["length"])
+            if data.shape[0] != seg_len:
+                raise RuntimeError(
+                    f"{self.mode} 缓存段长度不一致: " +
+                    f"day={seg['day']}, real_range={seg['real_range']}, " +
+                    f"expected={seg_len}, actual={data.shape[0]}, " +
+                    f"modalities={seg['modalities']}, " +
+                    f"merge_modalities={seg['merge_modalities']}"
+                )
             cache[offset:offset + seg_len, self.dynamic_ch_idx] = data
             self._generate_segment_idx(seg_len, seg, offset)
             offset += seg_len
@@ -217,7 +225,7 @@ class Mem_Loader:
     def _load_dynamic_segment(self, seg_info):
         modalities = seg_info["modalities"]
         merge_modalities = seg_info["merge_modalities"]
-        target_t = seg_info["length"]
+        target_t = int(seg_info["length"])
 
         channel_data = []
         for idx, (path, data_range) in enumerate(modalities):
@@ -225,14 +233,30 @@ class Mem_Loader:
                 data = np.zeros((target_t, 1, self.img_size[0], self.img_size[1]), dtype=np.float32)
             else:
                 data = np.load(path).astype(np.float32)
+                data = self._tailor_data(data, data_range)
 
                 if merge_modalities is not None:
                     merge_path, merge_range = merge_modalities[idx]
                     if merge_path != "-":
                         merge_data = np.load(merge_path).astype(np.float32)
+                        merge_data = self._tailor_data(merge_data, merge_range)
                         data = np.concatenate((data, merge_data), axis=0)
+                    elif data.shape[0] < target_t:
+                        missing_t = target_t - data.shape[0]
+                        zeros_shape = (missing_t, *data.shape[1:])
+                        data = np.concatenate(
+                            (data, np.zeros(zeros_shape, dtype=np.float32)),
+                            axis=0,
+                        )
 
-                data = self._tailor_data(data, data_range)
+                if data.shape[0] != target_t:
+                    merge_info = merge_modalities[idx] if merge_modalities is not None else None
+                    raise RuntimeError(
+                        f"{self.mode} 动态模态长度不一致: "
+                        f"day={seg_info['day']}, idx={idx}, "
+                        f"expected={target_t}, actual={data.shape[0]}, "
+                        f"data_range={data_range}, merge={merge_info}"
+                    )
 
                 if self.region_idx is not None:
                     if data.ndim == 3:

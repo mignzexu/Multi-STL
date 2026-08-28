@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1600" viewBox="0 0 2400 1600" role="img" aria-labelledby="title desc">
+  <title id="title">GVBF biflow 源码逻辑图</title>
+  <desc id="desc">按照 models/GVBF/Model.py 与 gvbf_network.py 的实际代码逻辑绘制的 biflow 模式训练、网络和推理流程。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fbfcfe"/><stop offset="100%" stop-color="#f2f6fb"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#edf8ff"/><stop offset="100%" stop-color="#d5edff"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#effcf5"/><stop offset="100%" stop-color="#d2f3df"/></linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff8ec"/><stop offset="100%" stop-color="#ffe2b4"/></linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7f3ff"/><stop offset="100%" stop-color="#e8deff"/></linearGradient>
+    <linearGradient id="gray" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f8fafc"/><stop offset="100%" stop-color="#eef2f7"/></linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#12213b"/><stop offset="100%" stop-color="#263654"/></linearGradient>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="124%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#334155" flood-opacity="0.12"/></filter>
+    <filter id="soft" x="-14%" y="-14%" width="128%" height="132%"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#334155" flood-opacity="0.12"/></filter>
+    <marker id="arrow" markerWidth="13" markerHeight="13" refX="10.5" refY="6.5" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L12 6.5 L1 12 Z" fill="#1f2937"/></marker>
+    <marker id="arrowBlue" markerWidth="13" markerHeight="13" refX="10.5" refY="6.5" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L12 6.5 L1 12 Z" fill="#2563eb"/></marker>
+    <marker id="arrowGreen" markerWidth="13" markerHeight="13" refX="10.5" refY="6.5" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L12 6.5 L1 12 Z" fill="#059669"/></marker>
+    <style>
+      .title{font:800 48px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#0f172a;letter-spacing:0}
+      .sub{font:400 20px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#475569;letter-spacing:0}
+      .panelTitle{font:800 25px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#0f172a;letter-spacing:0}
+      .letter{font:900 31px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#fff;letter-spacing:0}
+      .h{font:800 17px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#172033;letter-spacing:0}
+      .b{font:400 14.5px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#475569;letter-spacing:0}
+      .s{font:400 12.8px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#64748b;letter-spacing:0}
+      .tiny{font:600 11.3px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#64748b;letter-spacing:0}
+      .math{font:italic 15.8px "Times New Roman","Cambria Math",serif;fill:#172033;letter-spacing:0}
+      .mono{font:600 12.8px "Consolas","Cascadia Mono",monospace;fill:#334155;letter-spacing:0}
+      .whiteH{font:800 17px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#fff;letter-spacing:0}
+      .whiteB{font:400 13px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#e2e8f0;letter-spacing:0}
+      .panel{fill:#fff;stroke:#d9e2ef;stroke-width:1.25;filter:url(#shadow)}
+      .card{stroke:#d5e0ee;stroke-width:1.1;filter:url(#soft)}
+      .line{fill:none;stroke:#1f2937;stroke-width:2.15;marker-end:url(#arrow)}
+      .lineBlue{fill:none;stroke:#2563eb;stroke-width:2.35;marker-end:url(#arrowBlue)}
+      .lineGreen{fill:none;stroke:#059669;stroke-width:2.35;marker-end:url(#arrowGreen)}
+      .dash{stroke-dasharray:8 7}
+    </style>
+  </defs>
+
+  <rect width="2400" height="1600" fill="url(#bg)"/>
+  <text x="74" y="80" class="title">GVBF Biflow 模式源码逻辑图</text>
+  <text x="76" y="116" class="sub">严格按 models/GVBF 代码重画：配置解析、训练采样、UNet2DModel 调用、双输出损失、joint ODE 推理。</text>
+  <text x="1845" y="82" class="s">源码：models/GVBF/Model.py</text>
+  <text x="1845" y="108" class="s">网络：models/GVBF/gvbf_network.py</text>
+
+  <!-- A config -->
+  <g transform="translate(70 155)">
+    <rect class="panel" x="0" y="0" width="560" height="420" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">A</text>
+    <text x="82" y="52" class="panelTitle">配置如何生成模型</text>
+    <text x="82" y="84" class="b">来自 config.py 与 gvbf_network.py。</text>
+
+    <g transform="translate(38 128)">
+      <rect class="card" x="0" y="0" width="485" height="70" rx="18" fill="url(#purple)" stroke="#c4b5fd"/>
+      <text x="24" y="29" class="h">gvbf_model_config = 1_2_64_cond</text>
+      <text x="24" y="54" class="mono">in_channels=1, out_channels=2, c=64, cond=True</text>
+    </g>
+    <g transform="translate(38 230)">
+      <rect class="card" x="0" y="0" width="485" height="118" rx="18" fill="url(#gray)" stroke="#d8e2ef"/>
+      <text x="24" y="31" class="h">get_model(cfg)</text>
+      <text x="24" y="58" class="mono">_parse_config("1_2_64_cond")</text>
+      <text x="24" y="84" class="mono">_make_unet(1, 2, 64, cond=True)</text>
+      <text x="24" y="109" class="s">未包含 two_model，因此只创建一个 UNet2DModel。</text>
+    </g>
+    <path class="line" d="M280 198 V230"/>
+  </g>
+
+  <!-- B training -->
+  <g transform="translate(675 155)">
+    <rect class="panel" x="0" y="0" width="1655" height="520" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">B</text>
+    <text x="82" y="52" class="panelTitle">训练前向：_biflow_loss(x0, x1)</text>
+    <text x="82" y="84" class="b">这一部分完全对应 Model.py 中 _biflow_loss 的执行顺序。</text>
+
+    <g transform="translate(42 132)">
+      <rect class="card" x="0" y="0" width="155" height="96" rx="18" fill="url(#blue)" stroke="#9bd7ed"/>
+      <text x="22" y="33" class="h">取当前帧</text>
+      <text x="22" y="59" class="mono">x0=batch_x[:,-1]</text>
+      <text x="22" y="82" class="s">shape: B,C,H,W</text>
+    </g>
+    <g transform="translate(42 282)">
+      <rect class="card" x="0" y="0" width="155" height="96" rx="18" fill="url(#green)" stroke="#9fdab6"/>
+      <text x="22" y="33" class="h">取目标帧</text>
+      <text x="22" y="59" class="mono">x1=batch_y[:,0]</text>
+      <text x="22" y="82" class="s">shape: B,C,H,W</text>
+    </g>
+
+    <g transform="translate(260 204)">
+      <rect class="card" x="0" y="0" width="165" height="112" rx="18" fill="#fff" stroke="#d8e2ef"/>
+      <text x="22" y="32" class="h">空间处理</text>
+      <text x="22" y="59" class="mono">_pad_tensor</text>
+      <text x="22" y="84" class="s">H,W 补齐到 64 倍数</text>
+    </g>
+    <path class="lineBlue" d="M197 180 C225 180 235 232 260 250"/>
+    <path class="lineGreen" d="M197 330 C225 330 235 282 260 270"/>
+
+    <g transform="translate(485 120)">
+      <rect class="card" x="0" y="0" width="220" height="92" rx="18" fill="url(#purple)" stroke="#c4b5fd"/>
+      <text x="22" y="32" class="h">随机标量</text>
+      <text x="22" y="59" class="mono">t ~ U(0,1)</text>
+      <text x="22" y="80" class="mono">alpha ~ U(0,1)</text>
+    </g>
+    <g transform="translate(485 302)">
+      <rect class="card" x="0" y="0" width="220" height="92" rx="18" fill="url(#orange)" stroke="#e9bb69"/>
+      <text x="22" y="32" class="h">随机噪声</text>
+      <text x="22" y="59" class="mono">noise = randn_like(x0)</text>
+      <text x="22" y="80" class="s">与 x0_p 形状相同</text>
+    </g>
+
+    <g transform="translate(765 185)">
+      <rect class="card" x="0" y="0" width="255" height="130" rx="20" fill="#fff" stroke="#d8e2ef"/>
+      <text x="24" y="35" class="h">时间插值</text>
+      <text x="24" y="65" class="math">xt = x0 + t(x1 - x0)</text>
+      <text x="24" y="96" class="h">加噪中间态</text>
+      <text x="24" y="118" class="math">xta = xt + alpha · noise</text>
+    </g>
+    <path class="line" d="M425 260 H765"/>
+    <path class="line" d="M705 166 C735 170 745 198 765 220"/>
+    <path class="line" d="M705 348 C735 340 745 292 765 278"/>
+
+    <g transform="translate(1085 177)">
+      <rect x="0" y="0" width="235" height="145" rx="24" fill="url(#dark)" filter="url(#soft)"/>
+      <text x="28" y="39" class="whiteH">self.model(xta,t,alpha)</text>
+      <text x="28" y="68" class="whiteB">MyUNet2DModel.forward</text>
+      <text x="28" y="96" class="whiteB">返回 UNet 输出的 .sample</text>
+      <text x="28" y="122" class="whiteB">输出通道数 = 2</text>
+    </g>
+    <path class="line" d="M1020 250 H1085"/>
+
+    <g transform="translate(1380 138)">
+      <rect class="card" x="0" y="0" width="230" height="98" rx="18" fill="url(#green)" stroke="#9fdab6"/>
+      <text x="22" y="33" class="h">切分第 1 通道</text>
+      <text x="22" y="60" class="mono">v_p</text>
+      <text x="22" y="84" class="mono">MSE(v_p, x1-x0)</text>
+    </g>
+    <g transform="translate(1380 285)">
+      <rect class="card" x="0" y="0" width="230" height="98" rx="18" fill="url(#orange)" stroke="#e9bb69"/>
+      <text x="22" y="33" class="h">切分第 2 通道</text>
+      <text x="22" y="60" class="mono">d</text>
+      <text x="22" y="84" class="mono">MSE(d, noise)</text>
+    </g>
+    <path class="lineGreen" d="M1320 230 C1350 205 1360 190 1380 185"/>
+    <path class="line" d="M1320 270 C1350 310 1360 330 1380 335"/>
+    <text x="1382" y="425" class="h">总损失：loss = loss_v + loss_d</text>
+  </g>
+
+  <!-- C network -->
+  <g transform="translate(70 625)">
+    <rect class="panel" x="0" y="0" width="2260" height="535" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">C</text>
+    <text x="82" y="52" class="panelTitle">UNet2DModel：只画本项目源码显式配置的层级</text>
+    <text x="82" y="84" class="b">DownBlock2D、AttnDownBlock2D、UpBlock2D、AttnUpBlock2D 的内部 ResNet 细节由 diffusers 库实现，本项目源码没有自定义残差块。</text>
+
+    <g transform="translate(48 142)">
+      <rect class="card" x="0" y="0" width="135" height="86" rx="16" fill="url(#orange)" stroke="#e9bb69"/>
+      <text x="24" y="32" class="h">sample</text>
+      <text x="24" y="58" class="mono">xta</text>
+      <text x="22" y="78" class="s">1 通道</text>
+    </g>
+    <g transform="translate(48 290)">
+      <rect class="card" x="0" y="0" width="135" height="86" rx="16" fill="url(#purple)" stroke="#c4b5fd"/>
+      <text x="24" y="32" class="h">条件输入</text>
+      <text x="24" y="58" class="mono">t, alpha</text>
+      <text x="22" y="78" class="s">非图像通道</text>
+    </g>
+
+    <g transform="translate(240 132)">
+      <rect class="card" x="0" y="0" width="125" height="95" rx="16" fill="#dff4ff" stroke="#9bd7ed"/>
+      <text x="28" y="37" class="h">conv_in</text>
+      <text x="28" y="65" class="mono">1 -> 64</text>
+    </g>
+    <path class="line" d="M183 185 H240"/>
+
+    <g transform="translate(410 118)">
+      <rect x="0" y="0" width="815" height="126" rx="18" fill="#fbfdff" stroke="#d8e2ef"/>
+      <text x="22" y="30" class="h">down_block_types 与 block_out_channels</text>
+      <g transform="translate(22 52)">
+        <rect x="0" y="0" width="92" height="55" rx="10" fill="#dbeafe" stroke="#93c5fd"/><text x="18" y="23" class="tiny">Down</text><text x="26" y="43" class="mono">64</text>
+        <rect x="104" y="0" width="92" height="55" rx="10" fill="#dbeafe" stroke="#93c5fd"/><text x="122" y="23" class="tiny">Down</text><text x="130" y="43" class="mono">64</text>
+        <rect x="208" y="0" width="92" height="55" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="226" y="23" class="tiny">Down</text><text x="230" y="43" class="mono">128</text>
+        <rect x="312" y="0" width="92" height="55" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="330" y="23" class="tiny">Down</text><text x="334" y="43" class="mono">128</text>
+        <rect x="416" y="0" width="92" height="55" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="434" y="23" class="tiny">Down</text><text x="438" y="43" class="mono">128</text>
+        <rect x="520" y="0" width="115" height="55" rx="10" fill="#c4b5fd" stroke="#8b5cf6"/><text x="535" y="23" class="tiny">AttnDown</text><text x="558" y="43" class="mono">256</text>
+        <rect x="647" y="0" width="92" height="55" rx="10" fill="#ddd6fe" stroke="#7c3aed"/><text x="665" y="23" class="tiny">Down</text><text x="670" y="43" class="mono">256</text>
+      </g>
+    </g>
+    <path class="line" d="M365 180 H410"/>
+
+    <g transform="translate(1275 132)">
+      <rect class="card" x="0" y="0" width="155" height="95" rx="16" fill="url(#dark)" stroke="#243251"/>
+      <text x="38" y="37" class="whiteH">mid_block</text>
+      <text x="30" y="65" class="whiteB">diffusers 默认</text>
+    </g>
+    <path class="line" d="M1225 180 H1275"/>
+
+    <g transform="translate(1485 118)">
+      <rect x="0" y="0" width="600" height="126" rx="18" fill="#fbfdff" stroke="#d8e2ef"/>
+      <text x="22" y="30" class="h">up_block_types</text>
+      <g transform="translate(22 52)">
+        <rect x="0" y="0" width="75" height="55" rx="10" fill="#ddd6fe" stroke="#7c3aed"/><text x="21" y="23" class="tiny">Up</text><text x="18" y="43" class="mono">256</text>
+        <rect x="87" y="0" width="95" height="55" rx="10" fill="#c4b5fd" stroke="#8b5cf6"/><text x="103" y="23" class="tiny">AttnUp</text><text x="114" y="43" class="mono">256</text>
+        <rect x="194" y="0" width="75" height="55" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="215" y="23" class="tiny">Up</text><text x="211" y="43" class="mono">128</text>
+        <rect x="281" y="0" width="75" height="55" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="302" y="23" class="tiny">Up</text><text x="298" y="43" class="mono">128</text>
+        <rect x="368" y="0" width="75" height="55" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="389" y="23" class="tiny">Up</text><text x="385" y="43" class="mono">128</text>
+        <rect x="455" y="0" width="75" height="55" rx="10" fill="#dbeafe" stroke="#93c5fd"/><text x="476" y="23" class="tiny">Up</text><text x="476" y="43" class="mono">64</text>
+      </g>
+      <text x="477" y="112" class="tiny">另有第 7 个 UpBlock: 64</text>
+    </g>
+    <path class="line" d="M1430 180 H1485"/>
+
+    <g transform="translate(2140 132)">
+      <rect class="card" x="0" y="0" width="95" height="95" rx="16" fill="url(#green)" stroke="#9fdab6"/>
+      <text x="17" y="37" class="h">conv_out</text>
+      <text x="20" y="65" class="mono">64 -> 2</text>
+    </g>
+    <path class="lineGreen" d="M2085 180 H2140"/>
+
+    <g transform="translate(300 318)">
+      <rect class="card" x="0" y="0" width="1760" height="90" rx="18" fill="url(#gray)" stroke="#d8e2ef"/>
+      <text x="26" y="34" class="h">源码明确结论</text>
+      <text x="166" y="34" class="mono">block_out_channels = (64, 64, 128, 128, 128, 256, 256)</text>
+      <text x="26" y="64" class="b">只有 block 类型和通道数由本项目配置；每个 block 内部包含多少 ResnetBlock2D、是否有上/下采样卷积，是 diffusers.UNet2DModel 的库内部实现。</text>
+    </g>
+  </g>
+
+  <!-- D inference -->
+  <g transform="translate(70 1210)">
+    <rect class="panel" x="0" y="0" width="2260" height="250" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">D</text>
+    <text x="82" y="52" class="panelTitle">推理：_predict_next_frame 中的 joint ODE</text>
+    <text x="82" y="84" class="b">推理时没有 x1。代码从 x0 加少量噪声开始，沿 k 从 0 到 1 求解；同时 t 从 0 到 1，alpha 从 noise_level 到 0。</text>
+
+    <g transform="translate(55 124)">
+      <rect class="card" x="0" y="0" width="185" height="76" rx="16" fill="url(#blue)" stroke="#9bd7ed"/>
+      <text x="22" y="30" class="h">当前帧</text><text x="22" y="55" class="mono">x0_p</text>
+    </g>
+    <g transform="translate(300 124)">
+      <rect class="card" x="0" y="0" width="220" height="76" rx="16" fill="url(#orange)" stroke="#e9bb69"/>
+      <text x="22" y="30" class="h">ODE 初值</text><text x="22" y="55" class="mono">y0=x0_p+sigma*noise</text>
+    </g>
+    <g transform="translate(595 110)">
+      <rect x="0" y="0" width="295" height="104" rx="20" fill="url(#dark)" filter="url(#soft)"/>
+      <text x="24" y="35" class="whiteH">_joint_ode</text>
+      <text x="24" y="62" class="whiteB">t = lerp(0,1,k)</text>
+      <text x="24" y="86" class="whiteB">alpha = lerp(sigma,0,k)</text>
+    </g>
+    <g transform="translate(955 110)">
+      <rect class="card" x="0" y="0" width="320" height="104" rx="20" fill="url(#purple)" stroke="#c4b5fd"/>
+      <text x="24" y="35" class="h">每步调用同一个 U-Net</text>
+      <text x="24" y="62" class="mono">v,d = chunk(model(y,t,alpha),2)</text>
+      <text x="24" y="86" class="mono">dy/dk = v - sigma*d</text>
+    </g>
+    <g transform="translate(1340 124)">
+      <rect class="card" x="0" y="0" width="220" height="76" rx="16" fill="#fff" stroke="#d8e2ef"/>
+      <text x="22" y="30" class="h">torchode 求解</text><text x="22" y="55" class="mono">Heun + AutoDiffAdjoint</text>
+    </g>
+    <g transform="translate(1625 124)">
+      <rect class="card" x="0" y="0" width="170" height="76" rx="16" fill="url(#green)" stroke="#9fdab6"/>
+      <text x="22" y="30" class="h">下一帧</text><text x="22" y="55" class="mono">unpad, clamp</text>
+    </g>
+    <g transform="translate(1860 124)">
+      <rect class="card" x="0" y="0" width="240" height="76" rx="16" fill="url(#gray)" stroke="#d8e2ef"/>
+      <text x="22" y="30" class="h">自回归多步</text><text x="22" y="55" class="mono">current = frame</text>
+    </g>
+    <path class="line" d="M240 162 H300"/><path class="line" d="M520 162 H595"/><path class="lineBlue" d="M890 162 H955"/><path class="line" d="M1275 162 H1340"/><path class="lineGreen" d="M1560 162 H1625"/><path class="line" d="M1795 162 H1860"/>
+  </g>
+</svg>

@@ -1,5 +1,4 @@
+from .Model import Model
 from .config import SwinLSTM_Config
-from .SwinLSTM_model import Main
-from .loss import loss_fn
 
-__all__ = ['SwinLSTM_Config', 'Main', 'loss_fn']
+__all__ = ["Model", "SwinLSTM_Config"]

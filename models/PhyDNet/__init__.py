@@ -1,5 +1,4 @@
+from .Model import Model
 from .config import PhyDNet_Config
-from .loss import loss_fn
-from .PhyDNet_model import Main
 
-__all__ = ['PhyDNet_Config', 'loss_fn', 'Main']
+__all__ = ["Model", "PhyDNet_Config"]

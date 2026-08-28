@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2200" height="1300" viewBox="0 0 2200 1300" role="img" aria-labelledby="title desc">
+  <title id="title">GVBF Condiff 模式中文论文式架构图</title>
+  <desc id="desc">GVBF condiff 模式示意图，展示条件扩散式训练、双通道条件输入 U-Net 和从噪声生成下一帧的 ODE 推理。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fbfcfe"/><stop offset="100%" stop-color="#f3f7fb"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#eef8ff"/><stop offset="100%" stop-color="#d6ecff"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#effcf5"/><stop offset="100%" stop-color="#cff1dc"/></linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff8ec"/><stop offset="100%" stop-color="#ffe4b8"/></linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7f3ff"/><stop offset="100%" stop-color="#e5dcff"/></linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#12213b"/><stop offset="100%" stop-color="#243251"/></linearGradient>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="124%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#334155" flood-opacity="0.12"/></filter>
+    <filter id="soft" x="-14%" y="-14%" width="128%" height="132%"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#334155" flood-opacity="0.12"/></filter>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L13 7 L1 13 Z" fill="#1f2937"/></marker>
+    <marker id="arrowBlue" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L13 7 L1 13 Z" fill="#2563eb"/></marker>
+    <marker id="arrowGreen" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L13 7 L1 13 Z" fill="#059669"/></marker>
+    <style>
+      .title{font:800 46px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#0f172a;letter-spacing:0}
+      .sub{font:400 20px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#475569;letter-spacing:0}
+      .panelTitle{font:800 26px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#0f172a;letter-spacing:0}
+      .letter{font:900 31px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#fff;letter-spacing:0}
+      .h{font:800 18px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#172033;letter-spacing:0}
+      .b{font:400 15px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#475569;letter-spacing:0}
+      .s{font:400 13px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#64748b;letter-spacing:0}
+      .math{font:italic 16px "Times New Roman","Cambria Math",serif;fill:#172033;letter-spacing:0}
+      .mono{font:600 13px "Consolas","Cascadia Mono",monospace;fill:#334155;letter-spacing:0}
+      .whiteH{font:800 18px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#fff;letter-spacing:0}
+      .whiteB{font:400 13.5px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#e2e8f0;letter-spacing:0}
+      .panel{fill:#fff;stroke:#d9e2ef;stroke-width:1.3;filter:url(#shadow)}
+      .card{stroke:#d5e0ee;stroke-width:1.15;filter:url(#soft)}
+      .line{fill:none;stroke:#1f2937;stroke-width:2.2;marker-end:url(#arrow)}
+      .lineBlue{fill:none;stroke:#2563eb;stroke-width:2.4;marker-end:url(#arrowBlue)}
+      .lineGreen{fill:none;stroke:#059669;stroke-width:2.4;marker-end:url(#arrowGreen)}
+      .skip{fill:none;stroke:#7c3aed;stroke-width:2;stroke-dasharray:8 7;marker-end:url(#arrow);opacity:.85}
+    </style>
+  </defs>
+  <rect width="2200" height="1300" fill="url(#bg)"/>
+  <text x="74" y="80" class="title">GVBF Condiff 模式：在当前帧条件下，从噪声逐步生成下一帧</text>
+  <text x="76" y="116" class="sub">配置：gvbf_mode = condiff，gvbf_model_config = 2_1_64。模型输入是两个通道 [噪声中间态 xa，当前帧 x0]，输出一个去噪更新 dθ。</text>
+  <text x="1765" y="82" class="s">对应代码：_condiff_loss 与 _predict_next_frame</text>
+  <text x="1765" y="108" class="s">主干：UNet2DModel，输入 2 通道，输出 1 通道</text>
+
+  <g transform="translate(70 155)">
+    <rect class="panel" x="0" y="0" width="720" height="980" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">A</text>
+    <text x="82" y="52" class="panelTitle">训练目标：学习从噪声到目标帧的去噪方向</text>
+    <text x="82" y="84" class="b">Condiff 不直接在 x0 和 x1 之间插值，而是在随机噪声和目标帧 x1 之间插值。</text>
+
+    <g transform="translate(54 145)">
+      <rect class="card" x="0" y="0" width="175" height="126" rx="18" fill="url(#orange)" stroke="#e9bb69"/>
+      <circle cx="45" cy="42" r="7" fill="#f59e0b"/><circle cx="76" cy="78" r="6" fill="#f59e0b"/><circle cx="119" cy="37" r="8" fill="#f59e0b"/><circle cx="145" cy="91" r="6" fill="#f59e0b"/>
+      <path d="M28 98 C64 68 101 115 150 60" fill="none" stroke="#fb923c" stroke-width="5" stroke-linecap="round" opacity=".75"/>
+      <text x="50" y="164" class="h">随机噪声 ε</text>
+    </g>
+    <g transform="translate(54 372)">
+      <rect class="card" x="0" y="0" width="175" height="126" rx="18" fill="url(#green)" stroke="#9fdab6"/>
+      <path d="M22 92 C56 35 86 80 118 50 C143 25 161 66 170 36" fill="none" stroke="#059669" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="80" cy="60" r="14" fill="#34d399"/>
+      <text x="49" y="164" class="h">目标帧 x1</text>
+    </g>
+    <g transform="translate(54 620)">
+      <rect class="card" x="0" y="0" width="175" height="126" rx="18" fill="url(#blue)" stroke="#9bd7ed"/>
+      <path d="M23 92 C52 42 78 76 106 48 C134 18 156 63 168 32" fill="none" stroke="#2563eb" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="56" cy="45" r="14" fill="#60a5fa"/>
+      <text x="49" y="164" class="h">条件帧 x0</text>
+    </g>
+
+    <g transform="translate(335 245)">
+      <rect class="card" x="0" y="0" width="320" height="152" rx="20" fill="#fff"/>
+      <text x="24" y="38" class="h">扩散式插值</text>
+      <text x="24" y="69" class="math">xa = (1 - α)ε + αx1</text>
+      <text x="24" y="100" class="b">α 越大，xa 越接近真实目标帧。</text>
+      <text x="24" y="126" class="b">α 越小，xa 越像随机噪声。</text>
+    </g>
+    <path class="line" d="M245 205 C285 220 304 260 335 296"/>
+    <path class="lineGreen" d="M245 432 C292 420 306 360 335 340"/>
+
+    <g transform="translate(335 560)">
+      <rect class="card" x="0" y="0" width="320" height="128" rx="20" fill="url(#purple)" stroke="#c4b5fd"/>
+      <text x="24" y="38" class="h">条件拼接输入</text>
+      <text x="24" y="70" class="math">input = concat(xa, x0)</text>
+      <text x="24" y="100" class="mono">2 × H × W</text>
+    </g>
+    <path class="lineBlue" d="M245 682 C285 682 302 640 335 624"/>
+    <path class="line" d="M495 397 C495 470 495 510 495 560"/>
+
+    <g transform="translate(202 765)">
+      <rect x="0" y="0" width="315" height="142" rx="24" fill="url(#dark)" filter="url(#soft)"/>
+      <text x="32" y="42" class="whiteH">条件 U-Net 去噪网络</text>
+      <text x="32" y="70" class="whiteB">输入：[xa, x0] 和 α</text>
+      <text x="32" y="98" class="whiteB">输出：去噪更新 dθ</text>
+      <text x="32" y="122" class="whiteB">学习如何从噪声走向 x1</text>
+    </g>
+    <path class="line" d="M495 688 C495 725 435 745 360 765"/>
+  </g>
+
+  <g transform="translate(835 155)">
+    <rect class="panel" x="0" y="0" width="1295" height="640" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">B</text>
+    <text x="82" y="52" class="panelTitle">U-Net 主干：双通道条件输入，单通道去噪输出</text>
+    <text x="82" y="84" class="b">Condiff 的关键是“条件生成”：当前帧 x0 不作为目标，而是作为条件与 xa 拼接，帮助模型生成符合当前天气状态的下一帧。</text>
+
+    <g transform="translate(55 278)">
+      <rect class="card" x="0" y="-42" width="130" height="86" rx="16" fill="url(#orange)" stroke="#e9bb69"/>
+      <text x="23" y="-9" class="h">xa</text><text x="22" y="20" class="s">噪声中间态</text>
+      <rect class="card" x="0" y="58" width="130" height="86" rx="16" fill="url(#blue)" stroke="#9bd7ed"/>
+      <text x="23" y="91" class="h">x0</text><text x="22" y="120" class="s">当前条件帧</text>
+      <text x="10" y="184" class="mono">concat: 2 × H × W</text>
+    </g>
+
+    <g transform="translate(430 96)">
+      <rect class="card" x="0" y="0" width="450" height="90" rx="20" fill="url(#purple)" stroke="#c4b5fd"/>
+      <text x="28" y="36" class="h">噪声强度嵌入</text>
+      <text x="28" y="65" class="math">α → timestep embedding → Linear → SiLU → Linear</text>
+    </g>
+    <path class="line" d="M655 186 C655 220 655 235 655 260"/>
+
+    <g transform="translate(210 250) scale(0.88)">
+      <text x="0" y="-22" class="h">编码器</text>
+      <rect x="0" y="30" width="92" height="124" rx="10" fill="#dff4ff" stroke="#9bd7ed"/><text x="18" y="83" class="h">Conv</text><text x="18" y="111" class="mono">2→64</text>
+      <rect x="142" y="40" width="80" height="114" rx="10" fill="#dbeafe" stroke="#93c5fd"/><text x="158" y="89" class="h">Down</text><text x="165" y="116" class="mono">64</text>
+      <rect x="272" y="54" width="70" height="100" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="285" y="98" class="h">Down</text><text x="285" y="123" class="mono">128</text>
+      <rect x="392" y="70" width="60" height="84" rx="10" fill="#93c5fd" stroke="#3b82f6"/><text x="399" y="106" class="h">Down</text><text x="398" y="128" class="mono">128</text>
+      <rect x="502" y="88" width="52" height="66" rx="10" fill="#c4b5fd" stroke="#8b5cf6"/><text x="509" y="115" class="h">Attn</text><text x="509" y="135" class="mono">256</text>
+      <path class="line" d="M92 92 H142"/><path class="line" d="M222 97 H272"/><path class="line" d="M342 104 H392"/><path class="line" d="M452 114 H502"/>
+      <text x="620" y="-22" class="h">解码器</text>
+      <rect x="620" y="88" width="52" height="66" rx="10" fill="#ddd6fe" stroke="#8b5cf6"/><text x="635" y="115" class="h">Up</text><text x="628" y="135" class="mono">256</text>
+      <rect x="730" y="70" width="60" height="84" rx="10" fill="#c7d2fe" stroke="#6366f1"/><text x="747" y="106" class="h">Up</text><text x="737" y="128" class="mono">128</text>
+      <rect x="850" y="54" width="70" height="100" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="872" y="98" class="h">Up</text><text x="860" y="123" class="mono">128</text>
+      <rect x="980" y="40" width="80" height="114" rx="10" fill="#dbeafe" stroke="#93c5fd"/><text x="1004" y="89" class="h">Up</text><text x="1003" y="116" class="mono">64</text>
+      <rect x="1115" y="30" width="92" height="124" rx="10" fill="url(#orange)" stroke="#e9bb69"/><text x="1132" y="83" class="h">输出卷积</text><text x="1135" y="111" class="mono">64→1</text>
+      <path class="line" d="M554 121 H620"/><path class="line" d="M672 121 H730"/><path class="line" d="M790 112 H850"/><path class="line" d="M920 104 H980"/><path class="line" d="M1060 97 H1115"/>
+      <path class="skip" d="M42 25 C230 -58 775 -55 1160 25"/>
+      <path class="skip" d="M182 38 C330 -18 725 -10 1018 38"/>
+      <path class="skip" d="M305 52 C430 5 660 10 884 52"/>
+      <text x="360" y="210" class="s" fill="#6d28d9">跳跃连接保证去噪输出仍保留清晰的局部结构。</text>
+    </g>
+
+    <g transform="translate(470 520)">
+      <rect class="card" x="0" y="0" width="370" height="78" rx="18" fill="#fff" stroke="#d8e2ef"/>
+      <text x="28" y="32" class="h">训练损失</text>
+      <text x="135" y="32" class="math">dθ ≈ x1 - ε</text>
+      <text x="28" y="58" class="mono">L = MSE(dθ, x1 - ε)</text>
+    </g>
+  </g>
+
+  <g transform="translate(835 845)">
+    <rect class="panel" x="0" y="0" width="1295" height="290" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">C</text>
+    <text x="82" y="52" class="panelTitle">推理流程：以随机噪声为起点，在 x0 条件下生成下一帧</text>
+    <text x="82" y="84" class="b">测试时先采样随机噪声 y0，然后反复用 U-Net 预测去噪更新；每一步都把当前状态 y 与条件帧 x0 拼接后送入模型。</text>
+    <g transform="translate(60 132)"><rect class="card" x="0" y="0" width="165" height="82" rx="18" fill="url(#orange)" stroke="#e9bb69"/><text x="24" y="33" class="h">初始噪声</text><text x="24" y="59" class="mono">y0 = ε</text></g>
+    <g transform="translate(285 132)"><rect class="card" x="0" y="0" width="185" height="82" rx="18" fill="url(#blue)" stroke="#9bd7ed"/><text x="24" y="33" class="h">条件拼接</text><text x="24" y="59" class="mono">concat(y, x0)</text></g>
+    <g transform="translate(535 132)"><rect class="card" x="0" y="0" width="210" height="82" rx="18" fill="url(#dark)" stroke="#243251"/><text x="24" y="33" class="whiteH">U-Net 去噪场</text><text x="24" y="60" class="whiteB">dy/dt = dθ([y,x0],t)</text></g>
+    <g transform="translate(815 132)"><rect class="card" x="0" y="0" width="165" height="82" rx="18" fill="url(#purple)" stroke="#c4b5fd"/><text x="24" y="33" class="h">ODE 求解</text><text x="24" y="59" class="mono">Heun 0→1</text></g>
+    <g transform="translate(1050 132)"><rect class="card" x="0" y="0" width="170" height="82" rx="18" fill="url(#green)" stroke="#9fdab6"/><text x="24" y="33" class="h">下一帧</text><text x="24" y="59" class="mono">x̂1</text></g>
+    <path class="line" d="M225 173 H285"/><path class="lineBlue" d="M470 173 H535"/><path class="line" d="M745 173 H815"/><path class="lineGreen" d="M980 173 H1050"/>
+  </g>
+
+  <g transform="translate(240 1190)">
+    <rect x="0" y="0" width="1720" height="70" rx="20" fill="#fff" stroke="#d9e2ef" filter="url(#soft)"/>
+    <text x="30" y="43" class="h">一句话总结：</text>
+    <text x="165" y="43" class="b">Condiff 模式最像“有条件的去噪生成”，它依赖当前帧 x0，把随机噪声逐步变成下一帧。</text>
+  </g>
+</svg>

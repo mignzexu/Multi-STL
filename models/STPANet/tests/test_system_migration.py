@@ -64,9 +64,10 @@ class STPANetSystemMigrationTests(unittest.TestCase):
         stpanet = importlib.import_module("models.STPANet")
 
         self.assertIsNotNone(stpanet.Model)
-        self.assertIsNotNone(stpanet.Main)
         self.assertIsNotNone(stpanet.STPANet_Config)
-        self.assertIsNotNone(stpanet.loss_fn)
+        self.assertEqual(set(stpanet.__all__), {"Model", "STPANet_Config"})
+        self.assertFalse(hasattr(stpanet, "Main"))
+        self.assertFalse(hasattr(stpanet, "loss_fn"))
 
     def test_model_subclasses_system(self):
         system_module = importlib.import_module("models.Model_system")
@@ -101,15 +102,21 @@ class STPANetSystemMigrationTests(unittest.TestCase):
         train_out = module.training_step((batch_x, batch_y), 0)
         self.assertIn("loss", train_out)
         self.assertIn("train_loss", train_out)
+        self.assertIn("batch_size", train_out)
         self.assertTrue(torch.is_tensor(train_out["loss"]))
-        self.assertIsInstance(train_out["train_loss"], float)
+        self.assertTrue(torch.is_tensor(train_out["train_loss"]))
+        self.assertFalse(train_out["train_loss"].requires_grad)
+        self.assertEqual(train_out["batch_size"], batch_x.shape[0])
 
         val_out = module.validation_step((batch_x, batch_y), 0)
         self.assertIn("val_loss", val_out)
+        self.assertIn("batch_size", val_out)
         self.assertIn("output", val_out)
         self.assertIn("label", val_out)
         self.assertEqual(val_out["output"].shape, val_out["label"].shape)
-        self.assertIsInstance(val_out["val_loss"], float)
+        self.assertTrue(torch.is_tensor(val_out["val_loss"]))
+        self.assertFalse(val_out["val_loss"].requires_grad)
+        self.assertEqual(val_out["batch_size"], batch_x.shape[0])
 
     def test_configure_optimizers_returns_lightning_structure(self):
         stpanet = importlib.import_module("models.STPANet")

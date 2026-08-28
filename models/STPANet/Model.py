@@ -1,16 +1,27 @@
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, TypedDict
+
 import torch
 from torch import optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from typing import Any, TypedDict
 
 try:
     from timm.scheduler.cosine_lr import CosineLRScheduler
 except ImportError:
     CosineLRScheduler = None
 
-from .loss import loss_fn
-from .STPANet_model import STPANet_Model
-from ..Model_system import System
+if __package__ in (None, ""):
+    project_root = Path(__file__).resolve().parents[2]
+    sys.path.insert(0, str(project_root))
+    from models.Model_system import System
+    from models.STPANet.loss import loss_fn
+    from models.STPANet.STPANet_model import STPANet_Model
+else:
+    from .loss import loss_fn
+    from .STPANet_model import STPANet_Model
+    from ..Model_system import System
 
 
 class OptConfig(TypedDict):
@@ -198,3 +209,114 @@ class Model(System):
             "output": output["pred"].detach(),
             "label": label.detach(),
         }
+
+
+def _build_debug_configs():
+    debug_dir = Path(__file__).resolve().parent / "_debug"
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    return SimpleNamespace(
+        total_seq=[2, 2],
+        test_seq=2,
+        label_idx=[0, 1],
+        in_category=["tp"],
+        out_category=["tp"],
+        img_size=[8, 8],
+        batch_size=2,
+        learning_rate=5e-4,
+        weight_decay=0.0,
+        lr_min=1e-6,
+        warmup_lr_init=1e-5,
+        warmup_t=0,
+        warmup_epoch=0,
+        k_decay=1.0,
+        epoch=1,
+        scheduler=None,
+        spatio_kernel_enc=3,
+        spatio_kernel_dec=3,
+        hid_S=8,
+        hid_T=16,
+        N_T=2,
+        N_S=2,
+        mlp_ratio=2,
+        drop_path=0.0,
+        drop=0.0,
+        std_method="z_score",
+        std_params={
+            "dataset": {"mean": [[[[0.0]]]], "std": [[[[1.0]]]]},
+            "metric": {"mean": [[[[[0.0]]]]], "std": [[[[[1.0]]]]]},
+        },
+        threshold=[[0.5]],
+        metrics=["mae"],
+        obj_dir=str(debug_dir),
+        save_interval=1,
+    )
+
+
+def _summarize_gradients(module, tag):
+    grad_param_count = 0
+    grad_abs_sum = 0.0
+    for _, param in module.named_parameters():
+        if param.grad is None:
+            continue
+        grad_param_count += 1
+        grad_abs_sum += param.grad.detach().abs().sum().item()
+    if grad_param_count == 0:
+        raise RuntimeError(f"{tag} backward did not produce parameter gradients.")
+    if grad_abs_sum == 0.0:
+        raise RuntimeError(f"{tag} backward gradients are all zeros.")
+    return grad_param_count, grad_abs_sum
+
+
+def _ensure_input_grad(tensor, tag):
+    if tensor.grad is None:
+        raise RuntimeError(f"{tag} backward did not produce input gradients.")
+    if not torch.isfinite(tensor.grad).all():
+        raise RuntimeError(f"{tag} input gradients contain non-finite values.")
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+    configs = _build_debug_configs()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    debug_model = Model(configs).to(device)
+    debug_model.train()
+
+    batch_size = 2
+    channels = len(configs.in_category)
+    height, width = configs.img_size
+    batch_x = torch.randn(
+        batch_size, configs.total_seq[0], channels, height, width, device=device
+    )
+    batch_y = torch.randn(
+        batch_size, configs.total_seq[1], channels, height, width, device=device
+    )
+
+    debug_model.zero_grad(set_to_none=True)
+    train_x = batch_x.detach().clone().requires_grad_(True)
+    train_out = debug_model.training_step((train_x, batch_y), 0)
+    train_out["loss"].backward()
+    _ensure_input_grad(train_x, "training_step")
+    grad_count, grad_sum = _summarize_gradients(debug_model.model, "training_step")
+    print(
+        f"[training_step] loss: {train_out['loss'].detach().item():.6f}, "
+        f"grad params: {grad_count}, grad sum: {grad_sum:.4f}"
+    )
+
+    debug_model.zero_grad(set_to_none=True)
+    forward_x = batch_x.detach().clone().requires_grad_(True)
+    forward_output = debug_model(forward_x)
+    forward_loss = forward_output.square().mean()
+    forward_loss.backward()
+    _ensure_input_grad(forward_x, "forward")
+    grad_count, grad_sum = _summarize_gradients(debug_model.model, "forward")
+    print(
+        f"[forward] output shape: {tuple(forward_output.shape)}, "
+        f"grad params: {grad_count}, grad sum: {grad_sum:.4f}"
+    )
+
+    val_out = debug_model.validation_step((batch_x, batch_y), 0)
+    expected_val_keys = {"val_loss", "batch_size", "output", "label"}
+    if set(val_out) != expected_val_keys:
+        raise RuntimeError(f"validation_step returned unexpected keys: {sorted(val_out)}")
+
+    print("All checks passed!")

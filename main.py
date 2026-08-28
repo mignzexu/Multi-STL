@@ -24,7 +24,8 @@ def create_args():
     parser.add_argument('--epoch', '-e', type=int, default=200, help='训练轮数')
     parser.add_argument('--save_grad', default=None, help='是否保存梯度?')
     parser.add_argument('--save_config', "-sc", action='store_true', default=False, help='是否保存配置文件?')
-    parser.add_argument('--device', type=str, default='all', help='使用的GPU ID,多个GPU用逗号隔开,使用"all"表示使用所有可用GPU,使用"cpu"表示使用CPU')
+    parser.add_argument('--device', type=int, default=1, help='Lightning Trainer 的 devices 参数：1 表示单进程/单设备，2+ 通常用于多卡策略')
+    parser.add_argument('--gpus', type=str, default=None, help='物理 GPU ID，多个 GPU 用逗号隔开，例如 "0" 或 "0,2"；默认 None 表示使用 CPU')
     parser.add_argument('--seed', type=int, default=42, help='随机种子')
     parser.add_argument('--pin_memory', default=None, help='是否使用 pinned memory 加速数据加载')
 
@@ -37,7 +38,7 @@ def create_args():
 
     # 文件路径和保存
     parser.add_argument('--work_dirs', '-wd', type=str, default='work_dirs', help='模型保存路径（默认包含时间戳）') 
-    parser.add_argument('--data_dir', type=str, default="/shares/weather/Split_Data", help='数据集总路径，内部请按照ReadMe中配置')
+    parser.add_argument('--data_dir', type=str, default="/scratch/mingze/data", help='数据集总路径，内部请按照ReadMe中配置')
     parser.add_argument('--save_mode', type=str, default="manual", choices=["auto", "manual"], help='数据集总路径，内部请按照ReadMe中配置')
     parser.add_argument('--test_interval', type=int, default=1, help='测试间隔')
     parser.add_argument('--save_interval', type=int, default=100, help='保存间隔')
@@ -105,7 +106,7 @@ def train(configs):
     from utils import train_config, save_loger
     if configs.save_config :
         config_log = train_config(
-            int(configs.gpu_id), 
+            0,
             mode = configs.save_mode)
     else :
         config_log = None
@@ -167,6 +168,8 @@ def test(configs):
         # 用 CLI 覆盖 JSON 中的 GPU 和 batch 配置，实现灵活的单卡/多卡/CPU 测试
         test_configs.batch_size = configs.batch_size
         test_configs.accelerator = configs.accelerator
+        test_configs.gpus = configs.gpus
+        test_configs.device = configs.device
         test_configs.gpu_count = configs.gpu_count
         test_configs.devices = configs.devices
 
@@ -200,55 +203,62 @@ if __name__ == '__main__':
 
     configs = create_args()
     
-    raw_device = configs.device
+    raw_gpus = configs.gpus
+    if isinstance(raw_gpus, str):
+        raw_gpus = raw_gpus.replace("，", ",")
+    if isinstance(raw_gpus, str) and raw_gpus.lower() in ("none", "cpu", ""):
+        raw_gpus = None
+    configs.gpus = raw_gpus
 
     # 这一步必须在 import torch 之前设置
-    if raw_device == "cpu":
+    if raw_gpus is None:
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-    elif raw_device != "all":
-        os.environ["CUDA_VISIBLE_DEVICES"] = raw_device
-    # raw_device == "all" 时不设置，默认使用所有可见 GPU
+    elif raw_gpus != "all":
+        os.environ["CUDA_VISIBLE_DEVICES"] = raw_gpus
 
     import torch
     from lightning.pytorch import seed_everything
 
     torch.set_float32_matmul_precision("high")
 
-    if torch.cuda.is_available() and raw_device != "cpu":
+    if torch.cuda.is_available() and raw_gpus is not None:
         visible_gpu_count = torch.cuda.device_count()
+        trainer_devices = int(configs.device)
+
+        if trainer_devices < 1:
+            raise ValueError(f"--device 必须 >= 1，当前为 {trainer_devices}")
+        if trainer_devices > visible_gpu_count:
+            raise ValueError(
+                f"--device={trainer_devices} 超过可见 GPU 数量 {visible_gpu_count}。"
+                f"请减少 --device 或增加 --gpus。"
+            )
 
         configs.accelerator = "gpu"
         configs.gpu_count = int(visible_gpu_count)
-        configs.devices = int(visible_gpu_count)
+        configs.devices = trainer_devices
 
-        # 兼容你旧代码中可能使用 configs.device 的地方
-        configs.device = "gpu"
-
-        if raw_device == "all":
+        if raw_gpus == "all":
             configs.gpu_id = "all"
-            print(f"使用所有可见 GPU: {configs.gpu_count} 张")
+            print(f"使用所有可见 GPU: {configs.gpu_count} 张，Lightning devices={configs.devices}")
         else:
-            configs.gpu_id = raw_device
-            print(f"使用 GPU: {raw_device}，可见 GPU 数量: {configs.gpu_count}")
+            configs.gpu_id = raw_gpus
+            print(f"使用 GPU: {raw_gpus}，可见 GPU 数量: {configs.gpu_count}，Lightning devices={configs.devices}")
 
     else:
         configs.accelerator = "cpu"
         configs.gpu_count = 0
         configs.devices = 1
-
-        # 兼容旧代码
-        configs.device = "cpu"
         configs.gpu_id = "cpu"
 
         print("使用 CPU")
 
-    if configs.accelerator == "gpu" and configs.gpu_count > 1:
+    if configs.accelerator == "gpu" and configs.devices > 1:
         if configs.strategy == "auto":
-            print(f"检测到 {configs.gpu_count} 张 GPU，strategy=auto，将在 Trainer 中使用 ddp")
+            print(f"Lightning devices={configs.devices}，strategy=auto，将在 Trainer 中使用 ddp")
         else:
-            print(f"检测到 {configs.gpu_count} 张 GPU，使用 strategy={configs.strategy}")
+            print(f"Lightning devices={configs.devices}，使用 strategy={configs.strategy}")
     elif configs.accelerator == "gpu":
-        print("检测到单张 GPU，将使用单卡训练")
+        print("Lightning devices=1，将使用单进程训练")
     else:
         print("未使用 GPU，将使用 CPU 训练")
 

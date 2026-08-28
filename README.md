@@ -34,7 +34,7 @@ Multi-STL/
 ├── visualization.py         # 预测结果可视化工具，支持单图 / 对比图 / GIF 导出
 ├── look.py                  # 快速检查 .npy 文件形状的调试工具
 │
-├── models/                  # 模型仓库（17 个模型，3 个已适配 System 架构）
+├── models/                  # 模型仓库（17 个模型，17 个已适配 System 架构）
 │   ├── Model_system.py      # ★ 所有模型的基类，继承 LightningModule
 │   ｜                         定义 training_step / validation_step / test_step 标准流程
 │   ├── SimVP_gSTA/          # gSTA（默认模型），基于 Transformer 的视频预测
@@ -120,6 +120,8 @@ python main.py --train -ex my_exp
 ```bash
 python main.py --train -ex msradar_exp -mod msradar          # MS-RadarFormer
 python main.py --train -ex stpanet_exp -mod stpanet          # STPANet
+python main.py --train -ex convlstm_exp -mod convlstm        # ConvLSTM
+python main.py --train -ex tau_exp -mod tau                  # TAU
 ```
 
 ### 切换数据集
@@ -135,7 +137,7 @@ python main.py --train -ex sd_exp -ds SDweather -mod gsta    # 使用 SDweather 
 ```bash
 python main.py --train \
     -ex <实验名称> \           # 必填，实验标识
-    -mod <模型名> \            # 可选，默认 gsta (msradar | stpanet)
+    -mod <模型名> \            # 可选，默认 gsta，见“已集成的模型”表
     -ds <数据集> \             # 可选，默认 weatherbench (SDweather)
     -b <批次大小> \            # 可选，默认 32
     -e <训练轮数> \            # 可选，默认 200
@@ -279,22 +281,22 @@ total: loss_sum=18, count=8  →  avg = 18/8 = 2.25
 | **SimVP_gSTA** | `-mod gsta` | ✓ | 基于 Transformer 的视频预测，默认模型 |
 | **MSRadar** | `-mod msradar` | ✓ | MS-RadarFormer，面向雷达数据的专用架构 |
 | **STPANet** | `-mod stpanet` | ✓ | 时空渐进注意力网络 |
-| TAU | | | 时间注意力单元 |
-| SwinLSTM | | | Swin Transformer + LSTM |
-| ConvLSTM | | | 卷积 LSTM 基线 |
-| E3DLSTM | | | 3D 卷积 LSTM（Eidetic） |
-| PredRNN | | | 预测 RNN 原版 |
-| PredRNNv2 | | | 预测 RNN 第二版 |
-| PredRNN++ | | | 带梯度高速网络的预测 RNN |
-| MAU | | | 运动感知单元 |
-| MIM | | | 记忆交互模块 |
-| MMVP | | | 多模态视频预测 |
-| PhyDNet | | | 物理约束网络 |
-| PoolFormer | | | PoolFormer（含 gSTA 变体） |
-| SimVP_IncepU | | | SimVP + InceptionU |
-| PreDiff | | | 预训练扩散模型 |
+| TAU | `-mod tau` | ✓ | 时间注意力单元 |
+| SwinLSTM | `-mod swinlstm` | ✓ | Swin Transformer + LSTM |
+| ConvLSTM | `-mod convlstm` | ✓ | 卷积 LSTM 基线 |
+| E3DLSTM | `-mod e3dlstm` | ✓ | 3D 卷积 LSTM（Eidetic） |
+| PredRNN | `-mod predrnn` | ✓ | 预测 RNN 原版 |
+| PredRNNv2 | `-mod predrnnv2` | ✓ | 预测 RNN 第二版 |
+| PredRNN++ | `-mod predrnnpp` | ✓ | 带梯度高速网络的预测 RNN |
+| MAU | `-mod mau` | ✓ | 运动感知单元 |
+| MIM | `-mod mim` | ✓ | 记忆交互模块 |
+| MMVP | `-mod mmvp` | ✓ | 多模态视频预测 |
+| PhyDNet | `-mod phydnet` | ✓ | 物理约束网络 |
+| PoolFormer | `-mod poolformer` | ✓ | PoolFormer（含 gSTA 变体） |
+| SimVP_IncepU | `-mod simvp_incepu` | ✓ | SimVP + InceptionU |
+| PreDiff | `-mod prediff` | ✓ | 预训练扩散模型 |
 
-> 标记 ✓ 的模型已适配 System 架构（`models/Model_system.py`），可直接通过命令行切换。其余模型使用旧版 `__init__.py` 封装，需要通过代码调用。
+> 标记 ✓ 的模型均已适配 System 架构（`models/Model_system.py`），可通过 `-mod` 命令行参数切换。
 
 ## 数据集
 

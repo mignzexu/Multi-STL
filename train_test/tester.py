@@ -1,13 +1,7 @@
 import os
-
 import lightning as l
 import torch.utils.data as Data
 from lightning.pytorch.callbacks import ModelCheckpoint
-
-
-import os
-import lightning as l
-import torch.utils.data as Data
 
 
 class Tester(object):
@@ -19,13 +13,24 @@ class Tester(object):
         self.model = model(self.configs)
         self.test_dataset = test_dataset
 
+        global_bs = int(self.configs.batch_size)
+        trainer_devices = int(getattr(self.configs, "devices", 1))
+        if trainer_devices > 1 and global_bs > 1:
+            if global_bs % trainer_devices != 0:
+                raise ValueError(
+                    f"batch_size={global_bs} 无法被 Lightning devices={trainer_devices} 整除"
+                )
+            batch_size = global_bs // trainer_devices
+        else:
+            batch_size = global_bs
+
         self.test_data = Data.DataLoader(
                 self.test_dataset,
-                batch_size=self.configs.batch_size,
+                batch_size=batch_size,
                 shuffle=False,
                 drop_last=False,
-                num_workers=4,  # 增加数据加载线程
-                pin_memory=True,  # 使用固定内存加速数据传输
+                num_workers=int(getattr(self.configs, "num_workers", 4)),
+                pin_memory=self.configs.accelerator == "gpu",
             )
 
         self.trainer = self._build_trainer()
@@ -33,12 +38,10 @@ class Tester(object):
         self.save = save
 
     def _build_trainer(self):
-        use_gpu = getattr(self.configs, "gpu_count", 0) > 0
-
         trainer_kwargs = {
             "default_root_dir": self.configs.obj_dir,
-            "accelerator": "gpu" if use_gpu else "cpu",
-            "devices": self.configs.gpu_count if use_gpu else 1,
+            "accelerator": self.configs.accelerator,
+            "devices": self.configs.devices,
             "logger": False,
             "enable_checkpointing": False,
             "enable_progress_bar": True,

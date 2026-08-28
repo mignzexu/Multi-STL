@@ -3,6 +3,11 @@ from torch import nn
 from timm.models.layers import DropPath, trunc_normal_
 from .utils import (reshape_patch, reshape_patch_back)
 
+try:
+    from ..Model_system import distribute_model_layers
+except ImportError:
+    from models.Model_system import distribute_model_layers
+
 
 class Main(nn.Module):
 
@@ -85,12 +90,25 @@ class PredRNNpp_Model(nn.Module):
         self.cell_list = nn.ModuleList(cell_list)
         self.conv_last = nn.Conv2d(num_hidden[num_layers - 1], self.frame_channel,
                                    kernel_size=1, stride=1, padding=0, bias=False)
+        self._layer_devices = None
+
+    def _get_layer_groups(self, devices):
+        main_dev, hid_dev = devices[0], devices[1]
+        return [
+            (self.cell_list, hid_dev),
+            (self.gradient_highway, hid_dev),
+            (self.conv_last, main_dev),
+        ]
 
     def forward(self, frames_tensor, mask_true, **kwargs):
         # [batch, length, height, width, channel] -> [batch, length, channel, height, width]
-        device = frames_tensor.device
-        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous()
-        mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous()
+        distribute_model_layers(self, self.configs, frames_tensor.device)
+        assert self._layer_devices is not None
+        main_dev = self._layer_devices[0]
+        hid_dev = self._layer_devices[1]
+
+        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous().to(hid_dev, non_blocking=True)
+        mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous().to(hid_dev, non_blocking=True)
 
         batch = frames.shape[0]
         height = frames.shape[3]
@@ -102,12 +120,12 @@ class PredRNNpp_Model(nn.Module):
 
         for i in range(self.num_layers):
             zeros = torch.zeros(
-                [batch, self.num_hidden[i], height, width], device=device)
+                [batch, self.num_hidden[i], height, width], device=hid_dev)
             h_t.append(zeros)
             c_t.append(zeros)
 
         memory = torch.zeros(
-            [batch, self.num_hidden[0], height, width], device=device)
+            [batch, self.num_hidden[0], height, width], device=hid_dev)
         z_t = None
 
         for t in range(self.pre_seq_length + self.aft_seq_length - 1):
@@ -131,7 +149,7 @@ class PredRNNpp_Model(nn.Module):
             for i in range(2, self.num_layers):
                 h_t[i], c_t[i], memory = self.cell_list[i](h_t[i - 1], h_t[i], c_t[i], memory)
 
-            x_gen = self.conv_last(h_t[self.num_layers - 1])
+            x_gen = self.conv_last(h_t[self.num_layers - 1].to(main_dev, non_blocking=True))
             next_frames.append(x_gen)
 
         next_frames = torch.stack(next_frames, dim=0).permute(1, 0, 3, 4, 2).contiguous()

@@ -12,7 +12,10 @@ from .loss import WindWeightedLoss
 from torch import optim
 from utils import Recorder
 from Instrument.standardizer import Load_Standardizer
-from ..Model_system import System
+try:
+    from ..Model_system import System, distribute_model_layers
+except ImportError:
+    from models.Model_system import System, distribute_model_layers
 
 class Model(System):
 
@@ -25,6 +28,7 @@ class Model(System):
         return MsRadarFormer(self.configs)
 
     def forward(self, batch_x, batch_y=None, **kwargs):
+        distribute_model_layers(self.model, self.configs, batch_x.device)
         pred_y = None
         if self.test_seq == self.aft_seq_length:
             pred_y = self.model(batch_x)

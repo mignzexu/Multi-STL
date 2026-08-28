@@ -4,6 +4,11 @@ from torch.nn import functional as F
 from timm.models.layers import DropPath, trunc_normal_
 from .utils import (reshape_patch, reshape_patch_back)
 
+try:
+    from ..Model_system import distribute_model_layers
+except ImportError:
+    from models.Model_system import distribute_model_layers
+
 
 class Main(nn.Module):
 
@@ -88,12 +93,25 @@ class E3DLSTM_Model(nn.Module):
         self.conv_last = nn.Conv3d(num_hidden[num_layers - 1], self.frame_channel,
                                    kernel_size=(self.window_length, 1, 1),
                                    stride=(self.window_length, 1, 1), padding=0, bias=False)
+        self._layer_devices = None
+
+    def _get_layer_groups(self, devices):
+        main_dev, hid_dev = devices[0], devices[1]
+        return [
+            (self.cell_list, hid_dev),
+            (self.conv_last, main_dev),
+        ]
 
     def forward(self, frames_tensor, mask_true, **kwargs):
         # [batch, length, height, width, channel] -> [batch, length, channel, height, width]
-        device = frames_tensor.device
-        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous()
-        mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous()
+        distribute_model_layers(self, self.configs, frames_tensor.device)
+        layer_devices = self._layer_devices
+        assert layer_devices is not None
+        main_dev = layer_devices[0]
+        hid_dev = layer_devices[1]
+
+        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous().to(hid_dev, non_blocking=True)
+        mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous().to(hid_dev, non_blocking=True)
 
         batch = frames.shape[0]
         height = frames.shape[3]
@@ -111,13 +129,13 @@ class E3DLSTM_Model(nn.Module):
 
         for i in range(self.num_layers):
             zeros = torch.zeros(
-                [batch, self.num_hidden[i], self.window_length, height, width], device=device)
+                [batch, self.num_hidden[i], self.window_length, height, width], device=hid_dev)
             h_t.append(zeros)
             c_t.append(zeros)
             c_history.append(zeros)
 
         memory = torch.zeros(
-            [batch, self.num_hidden[0], self.window_length, height, width], device=device)
+            [batch, self.num_hidden[0], self.window_length, height, width], device=hid_dev)
 
         for t in range(self.pre_seq_length + self.aft_seq_length - 1):
             # reverse schedule sampling
@@ -148,7 +166,8 @@ class E3DLSTM_Model(nn.Module):
                 input = net if i == 0 else h_t[i-1]
                 h_t[i], c_t[i], memory = self.cell_list[i](input, h_t[i], c_t[i], memory, c_history[i])
 
-            x_gen = self.conv_last(h_t[self.num_layers - 1]).squeeze(2)
+            x_gen = self.conv_last(h_t[self.num_layers - 1].to(main_dev, non_blocking=True)).squeeze(2)
+            x_gen = x_gen.to(hid_dev, non_blocking=True)
             next_frames.append(x_gen)
 
         # [length, batch, channel, height, width] -> [batch, length, height, width, channel]

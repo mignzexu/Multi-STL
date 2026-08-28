@@ -5,12 +5,18 @@ import torch
 from torch import nn
 from timm.models.layers import DropPath, trunc_normal_
 
+try:
+    from ..Model_system import resolve_manual_parallel_devices, distribute_model_layers
+except ImportError:
+    from models.Model_system import resolve_manual_parallel_devices, distribute_model_layers
+
 
 class gSTA_Model(nn.Module):
 
     def __init__(self, configs):
         super(gSTA_Model, self).__init__()
 
+        self.configs = configs
         self.T = configs.total_seq[0]
         self.C_in = len(configs.in_category)
         self.C_out = len(configs.out_category)
@@ -29,18 +35,31 @@ class gSTA_Model(nn.Module):
         self.hid = MidMetaNet(self.T*hid_S, hid_T, N_T,
                 input_resolution=(height, width),
                 mlp_ratio=mlp_ratio, drop=drop, drop_path=drop_path)
+        self._layer_devices = None
 
+    def _get_layer_groups(self, devices):
+        main_dev, hid_dev = devices[0], devices[1]
+        return [
+            (self.enc, main_dev),
+            (self.hid, hid_dev),
+            (self.dec, main_dev),
+        ]
 
     def forward(self, x_raw, **kwargs):
+        distribute_model_layers(self, self.configs, x_raw.device)
+        main_dev = self._layer_devices[0]
+        hid_dev = self._layer_devices[1]
+        x_raw = x_raw.to(main_dev, non_blocking=True)
+
         B, T, C, H, W = x_raw.shape     #[1, 12, 1, 32, 64]
         x = x_raw.view(B*T, C, H, W)     #[12, 1, 32, 64]
 
         embed, skip = self.enc(x)
         _, C_, H_, W_ = embed.shape # [12, 32, 16, 32] 经过encoder后,元数据的通道数变为32,长宽分辨率变小为原来的一半
 
-        z = embed.view(B, T, C_, H_, W_)    # [B, 12, 32, 16, 32]
+        z = embed.view(B, T, C_, H_, W_).to(hid_dev, non_blocking=True)    # [B, 12, 32, 16, 32]
         hid = self.hid(z)   
-        hid = hid.reshape(B*T, C_, H_, W_)
+        hid = hid.reshape(B*T, C_, H_, W_).to(main_dev, non_blocking=True)
 
         pred = self.dec(hid ,skip)
         pred = pred.reshape(B, T, self.C_out, H, W)
@@ -364,6 +383,3 @@ class AttentionModule(nn.Module):
         split_dim = f_g.shape[1] // 2
         f_x, g_x = torch.split(f_g, split_dim, dim=1)
         return torch.sigmoid(g_x) * f_x
-
-
-

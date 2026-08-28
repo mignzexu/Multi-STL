@@ -5,6 +5,11 @@ from .model_utils import PatchEmbedBack3D, ConvOut
 import argparse
 from einops import rearrange
 
+try:
+    from ...Model_system import distribute_model_layers
+except ImportError:
+    from models.Model_system import distribute_model_layers
+
 
 class MsRadarFormer(nn.Module):
     def __init__(self, configs):
@@ -51,6 +56,16 @@ class MsRadarFormer(nn.Module):
             else self.configs["embed_dim"] // 2,
             self.configs["img_out_channel"] * (self.configs["patch_size"] ** 2),
         )
+        self._layer_devices = None
+
+    def _get_layer_groups(self, devices):
+        main_dev, middle_dev = devices[0], devices[1]
+        return [
+            (self.encoder, main_dev),
+            (self.decoder, middle_dev),
+            (self.patch_embed_back, main_dev),
+            (self.conv_out, main_dev),
+        ]
 
     def config_transform(self, configs):
         model_config = vars(configs)
@@ -101,14 +116,19 @@ class MsRadarFormer(nn.Module):
         )
 
     def forward(self, x):
+        distribute_model_layers(self, self.configs, x.device)
+        main_dev = self._layer_devices[0] if self._layer_devices else x.device
+        middle_dev = self._layer_devices[1] if self._layer_devices else x.device
+        x = x.to(main_dev, non_blocking=True)
         x = self.patchify(x)
         x = rearrange(x, "b t c h w -> b c t h w")
         memory, memory_low_res = self.encoder(x)
+        memory = memory.to(middle_dev, non_blocking=True)
+        memory_low_res = memory_low_res.to(middle_dev, non_blocking=True)
         out = self.decoder(memory, memory_low_res)
+        out = out.to(main_dev, non_blocking=True)
         out = self.patch_embed_back(out)
         out = self.conv_out(out)
         out = rearrange(out, "b c t h w -> b t c h w")
         out = self.unpatchify(out)
         return out
-
-

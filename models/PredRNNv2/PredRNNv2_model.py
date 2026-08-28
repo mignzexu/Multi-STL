@@ -4,6 +4,11 @@ from torch.nn import functional as F
 from timm.models.layers import DropPath, trunc_normal_
 from .utils import (reshape_patch, reshape_patch_back)
 
+try:
+    from ..Model_system import distribute_model_layers
+except ImportError:
+    from models.Model_system import distribute_model_layers
+
 
 class Main(nn.Module):
 
@@ -86,13 +91,25 @@ class PredRNNv2_Model(nn.Module):
         adapter_num_hidden = num_hidden[0]
         self.adapter = nn.Conv2d(
             adapter_num_hidden, adapter_num_hidden, 1, stride=1, padding=0, bias=False)
+        self._layer_devices = None
+
+    def _get_layer_groups(self, devices):
+        main_dev, hid_dev = devices[0], devices[1]
+        return [
+            (self.cell_list, hid_dev),
+            (self.adapter, hid_dev),
+            (self.conv_last, main_dev),
+        ]
 
     def forward(self, frames_tensor, mask_true, **kwargs):
         return_loss = kwargs.get('return_loss', True)
         # [batch, length, height, width, channel] -> [batch, length, channel, height, width]
-        device = frames_tensor.device
-        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous()
-        mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous()
+        distribute_model_layers(self, self.configs, frames_tensor.device)
+        main_dev = self._layer_devices[0]
+        hid_dev = self._layer_devices[1]
+
+        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous().to(hid_dev, non_blocking=True)
+        mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous().to(hid_dev, non_blocking=True)
 
         batch = frames.shape[0]
         height = frames.shape[3]
@@ -108,14 +125,14 @@ class PredRNNv2_Model(nn.Module):
 
         for i in range(self.num_layers):
             zeros = torch.zeros(
-                [batch, self.num_hidden[i], height, width], device=device)
+                [batch, self.num_hidden[i], height, width], device=hid_dev)
             h_t.append(zeros)
             c_t.append(zeros)
             delta_c_list.append(zeros)
             delta_m_list.append(zeros)
 
         memory = torch.zeros(
-            [batch, self.num_hidden[0], height, width], device=device)
+            [batch, self.num_hidden[0], height, width], device=hid_dev)
 
         for t in range(self.total_length - 1):
 
@@ -148,7 +165,7 @@ class PredRNNv2_Model(nn.Module):
                 delta_m_list[i] = F.normalize(
                     self.adapter(delta_m).view(delta_m.shape[0], delta_m.shape[1], -1), dim=2)
 
-            x_gen = self.conv_last(h_t[self.num_layers - 1])
+            x_gen = self.conv_last(h_t[self.num_layers - 1].to(main_dev, non_blocking=True))
             next_frames.append(x_gen)
 
             # decoupling loss

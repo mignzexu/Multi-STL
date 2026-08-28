@@ -54,6 +54,58 @@ from utils import Recorder
 from Instrument.standardizer import Load_Standardizer
 
 
+def resolve_manual_parallel_devices(configs, main_device, required_gpus=2):
+    main_device = torch.device(main_device)
+    devices = tuple(main_device for _ in range(required_gpus))
+
+    if main_device.type != "cuda":
+        return devices
+
+    if isinstance(configs, dict):
+        visible_gpus = int(configs.get("gpu_count", torch.cuda.device_count()))
+        trainer_devices = int(configs.get("devices", 1))
+    else:
+        visible_gpus = int(getattr(configs, "gpu_count", torch.cuda.device_count()))
+        trainer_devices = int(getattr(configs, "devices", 1))
+
+    is_distributed_child = "LOCAL_RANK" in os.environ or "RANK" in os.environ
+
+    if visible_gpus < required_gpus or trainer_devices > 1 or is_distributed_child:
+        return devices
+
+    return tuple(torch.device(f"cuda:{idx}") for idx in range(required_gpus))
+
+
+def distribute_model_layers(inner_model, configs, main_device):
+    if not hasattr(inner_model, '_get_layer_groups'):
+        return
+
+    main_device = torch.device(main_device)
+
+    if isinstance(configs, dict):
+        visible_gpus = int(configs.get("gpu_count", 0))
+        trainer_devices = int(configs.get("devices", 1))
+    else:
+        visible_gpus = int(getattr(configs, "gpu_count", 0))
+        trainer_devices = int(getattr(configs, "devices", 1))
+
+    is_ddp = "LOCAL_RANK" in os.environ or "RANK" in os.environ
+
+    if visible_gpus < 2 or trainer_devices > 1 or is_ddp:
+        devices = (main_device, main_device)
+    else:
+        devices = resolve_manual_parallel_devices(configs, main_device)
+
+    current_devices = getattr(inner_model, '_layer_devices', None)
+    if current_devices == devices:
+        return
+
+    layer_groups = inner_model._get_layer_groups(devices)
+    for module, device in layer_groups:
+        module.to(device)
+    inner_model._layer_devices = devices
+
+
 class System(l.LightningModule):
 
     def __init__(self, configs):

@@ -4,6 +4,12 @@ from timm.models.layers import DropPath, trunc_normal_
 from timm.models.swin_transformer import SwinTransformerBlock,  window_reverse, PatchEmbed, PatchMerging, window_partition
 from timm.models.layers import to_2tuple
 
+try:
+    from ..Model_system import distribute_model_layers
+except ImportError:
+    from models.Model_system import distribute_model_layers
+
+
 class Main(nn.Module):
 
     def __init__(self, configs, device):
@@ -54,11 +60,24 @@ class SwinLSTM_D_Model(nn.Module):
                                      embed_dim=configs["embed_dim"], depths_upsample=depths_upsample,
                                      num_heads=num_heads, window_size=configs["window_size"])
         self.MSE_criterion = nn.MSELoss()
+        self._layer_devices = None
+
+    def _get_layer_groups(self, devices):
+        main_dev, hid_dev = devices[0], devices[1]
+        return [
+            (self.Downsample, hid_dev),
+            (self.Upsample, main_dev),
+        ]
 
     def forward(self, frames_tensor, **kwargs):
+        distribute_model_layers(self, self.configs, frames_tensor.device)
+        assert self._layer_devices is not None
+        main_dev = self._layer_devices[0]
+        hid_dev = self._layer_devices[1]
+
         # [batch, length, height, width, channel] -> [batch, length, channel, height, width]
         total_T = frames_tensor.shape[1]
-        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous()
+        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous().to(hid_dev, non_blocking=True)
 
         input_frames = frames[:, :self.pre_seq_length]
         states_down = [None] * len(self.depths_downsample)
@@ -68,16 +87,16 @@ class SwinLSTM_D_Model(nn.Module):
         
         for i in range(self.pre_seq_length - 1):
             states_down, x = self.Downsample(input_frames[:, i], states_down) 
-            states_up, output = self.Upsample(x, states_up)
+            states_up, output = self.Upsample(x.to(main_dev, non_blocking=True), states_up)
             next_frames.append(output) # till end, 9 frames
         for i in range(total_T - self.pre_seq_length):
             states_down, x = self.Downsample(last_frame, states_down) 
-            states_up, output = self.Upsample(x, states_up)
+            states_up, output = self.Upsample(x.to(main_dev, non_blocking=True), states_up)
             next_frames.append(output)
-            last_frame = output
+            last_frame = output.to(hid_dev, non_blocking=True)
  
         # [length, batch, channel, height, width] -> [batch, length, height, width, channel]
-        next_frames = torch.stack(next_frames, dim=0).permute(1, 0, 3, 4, 2).contiguous() # 19 frames
+        next_frames = torch.stack(next_frames, dim=0).permute(1, 0, 3, 4, 2).contiguous().to(main_dev, non_blocking=True) # 19 frames
 
         return {'pred': next_frames}
     

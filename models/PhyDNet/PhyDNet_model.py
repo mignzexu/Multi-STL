@@ -5,6 +5,11 @@ from numpy.linalg import *
 from scipy.special import factorial
 from functools import reduce
 
+try:
+    from ..Model_system import distribute_model_layers
+except ImportError:
+    from models.Model_system import distribute_model_layers
+
 
 class Main(nn.Module):
 
@@ -43,6 +48,7 @@ class PhyDNet_Model(nn.Module):
     def __init__(self, configs, device, **kwargs):
         super(PhyDNet_Model, self).__init__()
         self.device = device
+        self.configs = configs
         self.pre_seq_length = configs["total_seq"][0]
         self.aft_seq_length = configs["total_seq"][1]
         C = len(configs["in_category"])
@@ -59,8 +65,29 @@ class PhyDNet_Model(nn.Module):
         self.k2m = K2M([7,7])
 
         self.criterion = nn.MSELoss()
+        self._layer_devices = None
+
+    def _get_layer_groups(self, devices):
+        main_dev, hid_dev = devices[0], devices[1]
+        return [
+            (self.encoder.encoder_E, main_dev),
+            (self.encoder.encoder_Ep, main_dev),
+            (self.encoder.decoder_Dp, main_dev),
+            (self.encoder.decoder_D, main_dev),
+            (self.phycell, main_dev),
+            (self.k2m, main_dev),
+            (self.encoder.encoder_Er, hid_dev),
+            (self.encoder.decoder_Dr, hid_dev),
+            (self.convcell, hid_dev),
+        ]
 
     def forward(self, input_tensor, target_tensor, constraints, teacher_forcing_ratio=0.0):
+        distribute_model_layers(self, self.configs, input_tensor.device)
+        layer_devices = self._layer_devices or (torch.device(input_tensor.device), torch.device(input_tensor.device))
+        main_dev = layer_devices[0]
+        input_tensor = input_tensor.to(main_dev, non_blocking=True)
+        target_tensor = target_tensor.to(main_dev, non_blocking=True)
+        constraints = constraints.to(main_dev, non_blocking=True)
         loss = 0
         for ei in range(self.pre_seq_length - 1):
             _, _, output_image, _, _ = self.encoder(input_tensor[:,ei,:,:,:], (ei==0))
@@ -82,7 +109,7 @@ class PhyDNet_Model(nn.Module):
         for b in range(0, self.encoder.phycell.cell_list[0].input_dim):
             filters = self.encoder.phycell.cell_list[0].F.conv1.weight[:,b,:,:]
             m = self.k2m(filters.double()).float()
-            loss += self.criterion(m, constraints.to(m.device))
+            loss += self.criterion(m, constraints)
 
         predictions = torch.stack(predictions, dim=1)
 
@@ -370,19 +397,22 @@ class PhyD_EncoderRNN(torch.nn.Module):
         self.convcell = convcell
 
     def forward(self, input, first_timestep=False, decoding=False):
+        main_dev = next(self.encoder_E.parameters()).device
+        hid_dev = next(self.encoder_Er.parameters()).device
+        input = input.to(main_dev, non_blocking=True)
         input = self.encoder_E(input) # general encoder 64x64x1 -> 32x32x32
     
         if decoding:  # input=None in decoding phase
             input_phys = None
         else:
             input_phys = self.encoder_Ep(input)
-        input_conv = self.encoder_Er(input)     
+        input_conv = self.encoder_Er(input.to(hid_dev, non_blocking=True))     
 
         hidden1, output1 = self.phycell(input_phys, first_timestep)
         hidden2, output2 = self.convcell(input_conv, first_timestep)
 
         decoded_Dp = self.decoder_Dp(output1[-1])
-        decoded_Dr = self.decoder_Dr(output2[-1])
+        decoded_Dr = self.decoder_Dr(output2[-1]).to(main_dev, non_blocking=True)
         
         out_phys = torch.sigmoid(self.decoder_D(decoded_Dp)) # partial reconstructions for vizualization
         out_conv = torch.sigmoid(self.decoder_D(decoded_Dr))

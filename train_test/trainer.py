@@ -57,15 +57,17 @@ class Trainer(object):
         if pin_memory is None:
             pin_memory = self.configs.accelerator == "gpu"
 
-        # 多卡时从全局 batch_size 切分出每卡 batch_size
         global_bs = int(self.configs.batch_size)
-        gpu_count = int(getattr(self.configs, "gpu_count", 1))
-        if gpu_count > 1:
-            if global_bs % gpu_count != 0:
-                raise ValueError(
-                    f"batch_size={global_bs} 无法被卡数 {gpu_count} 整除"
-                )
-            per_gpu_bs = global_bs // gpu_count
+        trainer_devices = int(getattr(self.configs, "devices", 1))
+        if trainer_devices > 1:
+            if global_bs == 1:
+                per_gpu_bs = 1
+            else:
+                if global_bs % trainer_devices != 0:
+                    raise ValueError(
+                        f"batch_size={global_bs} 无法被 Lightning devices={trainer_devices} 整除"
+                    )
+                per_gpu_bs = global_bs // trainer_devices
         else:
             per_gpu_bs = global_bs
 

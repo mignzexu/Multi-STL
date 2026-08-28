@@ -3,6 +3,11 @@ import numpy as np
 from torch import nn
 from torch.nn import functional as F
 
+try:
+    from ..Model_system import distribute_model_layers
+except ImportError:
+    from models.Model_system import distribute_model_layers
+
 class Main(nn.Module):
 
     def __init__(self, configs, device):
@@ -41,6 +46,8 @@ class MMVP_Model(nn.Module):
     def __init__(self, configs):
         super(MMVP_Model, self).__init__()
 
+        self.configs = configs
+
         T = configs["total_seq"][0]
         C = len(configs["in_category"])
         H, W = configs["img_size"][0], configs["img_size"][1]
@@ -63,8 +70,9 @@ class MMVP_Model(nn.Module):
         self.fuse = Compose(downsample_scale=downsample_ratio, mat_size=self.mat_size, 
                             prev_len=T, aft_seq_length=aft_seq_length)
 
-        self.hid = MidMotionMatrix(T=T, hid_S=hid_S, hid_T=hid_T, mat_size=self.mat_size, 
-                                    aft_seq_length=aft_seq_length, use_direct_predictor=configs["use_direct_predictor"])
+        self.hid = MidMotionMatrix(T=T, hid_S=hid_S, hid_T=hid_T, mat_size=self.mat_size,
+                                    aft_seq_length=aft_seq_length, use_direct_predictor=configs["use_direct_predictor"],
+                                    configs=configs)
 
         res_shuffle_scale = 1
         for s in range(len(downsample_ratio) - 1):
@@ -224,7 +232,7 @@ class filter_block(nn.Module):
 
 class MidMotionMatrix(nn.Module):
     def __init__(self, T, hid_S=32, hid_T=192, mat_size=[[8, 8], [4, 4]], 
-                 aft_seq_length=10, use_direct_predictor=True):
+                 aft_seq_length=10, use_direct_predictor=True, configs=None):
         super(MidMotionMatrix, self).__init__()
         self.pre_seq_len = T
         self.mat_size = mat_size
@@ -239,7 +247,8 @@ class MidMotionMatrix(nn.Module):
                                            nn.LeakyReLU())
         self.predictor = PredictModel(T=T, hidden_len=hid_T, aft_seq_length=aft_seq_length,
                                       mx_h=self.mx_h, mx_w=self.mx_w,
-                                      use_direct_predictor=use_direct_predictor)
+                                      use_direct_predictor=use_direct_predictor,
+                                      configs=configs)
 
     def forward(self, x, B, T):
         similar_matrix = []
@@ -576,8 +585,9 @@ class Up(nn.Module):
         return self.conv(x) 
     
 class PredictModel(nn.Module):
-    def __init__(self, T, hidden_len=32, aft_seq_length=10, mx_h=32, mx_w=32, use_direct_predictor=True):
+    def __init__(self, T, hidden_len=32, aft_seq_length=10, mx_h=32, mx_w=32, use_direct_predictor=True, configs=None):
         super(PredictModel, self).__init__()
+        self.configs = configs
         self.mx_h = mx_h
         self.mx_w = mx_w
         self.hidden_len = hidden_len
@@ -591,6 +601,16 @@ class PredictModel(nn.Module):
         self.out_conv = nn.Conv2d(hidden_len, 1, kernel_size=3, padding=1, bias=False)
         self.softmax = nn.Softmax(dim=-1)
         self.sigmoid = nn.Sigmoid()
+        self._layer_devices = None
+
+    def _get_layer_groups(self, devices):
+        main_dev, hid_dev = devices[0], devices[1]
+        return [
+            (self.conv1, main_dev),
+            (self.predictor, hid_dev),
+            (self.fuse_conv, main_dev),
+            (self.out_conv, main_dev),
+        ]
 
     def res_interpolate(self,in_tensor,template_tensor):
         '''
@@ -603,6 +623,10 @@ class PredictModel(nn.Module):
         return out_tensor
 
     def forward(self,matrix_seq, softmax=False, res=None):
+        distribute_model_layers(self, self.configs, matrix_seq.device)
+        main_dev = self._layer_devices[0]
+        hid_dev = self._layer_devices[1]
+        matrix_seq = matrix_seq.to(main_dev, non_blocking=True)
 
         B,T,hw,window_size = matrix_seq.size()
 
@@ -612,13 +636,14 @@ class PredictModel(nn.Module):
         x = self.conv1(matrix_seq)
         x = x.reshape(B,T,hw,-1,self.mx_h,self.mx_w)
         x = x.permute(0,2,1,3,4,5).reshape(B*hw,T,-1,self.mx_h,self.mx_w)
+        x = x.to(hid_dev, non_blocking=True)
         emb = self.predictor(x)
 
-        emb = emb.reshape(B*hw*self.fut_len,-1,self.mx_h,self.mx_w)
+        emb = emb.reshape(B*hw*self.fut_len,-1,self.mx_h,self.mx_w).to(main_dev, non_blocking=True)
         res_emb = emb.clone()
         if res is not None:
             template = emb.clone().reshape(B,hw,emb.shape[1],-1).permute(0,2,1,3)
-            in_tensor = res.clone().reshape(B,hw//4,emb.shape[1],-1).permute(0,2,1,3)
+            in_tensor = res.to(main_dev, non_blocking=True).clone().reshape(B,hw//4,emb.shape[1],-1).permute(0,2,1,3)
             
             res_tensor = self.res_interpolate(in_tensor,template).permute(0,2,1,3).reshape(emb.shape)
             

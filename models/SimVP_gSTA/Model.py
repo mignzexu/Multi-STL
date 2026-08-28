@@ -30,7 +30,7 @@ from ..Model_system import System
 
 
 class Model(System):
-    def _init__(self, configs):
+    def __init__(self, configs):
         super().__init__(configs)
 
     def get_model(self):

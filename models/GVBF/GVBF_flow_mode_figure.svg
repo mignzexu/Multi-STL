@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2200" height="1300" viewBox="0 0 2200 1300" role="img" aria-labelledby="title desc">
+  <title id="title">GVBF Flow 模式中文论文式架构图</title>
+  <desc id="desc">GVBF flow 模式示意图，展示训练目标、U-Net 向量场主干和 ODE 推理流程。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fbfcfe"/><stop offset="100%" stop-color="#f3f7fb"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#eef8ff"/><stop offset="100%" stop-color="#d6ecff"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#effcf5"/><stop offset="100%" stop-color="#cff1dc"/></linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7f3ff"/><stop offset="100%" stop-color="#e5dcff"/></linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#12213b"/><stop offset="100%" stop-color="#243251"/></linearGradient>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="124%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#334155" flood-opacity="0.12"/></filter>
+    <filter id="soft" x="-14%" y="-14%" width="128%" height="132%"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#334155" flood-opacity="0.12"/></filter>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L13 7 L1 13 Z" fill="#1f2937"/></marker>
+    <marker id="arrowBlue" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L13 7 L1 13 Z" fill="#2563eb"/></marker>
+    <marker id="arrowGreen" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M1 1 L13 7 L1 13 Z" fill="#059669"/></marker>
+    <style>
+      .title{font:800 46px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#0f172a;letter-spacing:0}
+      .sub{font:400 20px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#475569;letter-spacing:0}
+      .panelTitle{font:800 26px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#0f172a;letter-spacing:0}
+      .letter{font:900 31px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#fff;letter-spacing:0}
+      .h{font:800 18px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#172033;letter-spacing:0}
+      .b{font:400 15px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#475569;letter-spacing:0}
+      .s{font:400 13px "Microsoft YaHei","SimHei","Noto Sans CJK SC",Arial,sans-serif;fill:#64748b;letter-spacing:0}
+      .math{font:italic 16px "Times New Roman","Cambria Math",serif;fill:#172033;letter-spacing:0}
+      .mono{font:600 13px "Consolas","Cascadia Mono",monospace;fill:#334155;letter-spacing:0}
+      .whiteH{font:800 18px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#fff;letter-spacing:0}
+      .whiteB{font:400 13.5px "Microsoft YaHei","SimHei",Arial,sans-serif;fill:#e2e8f0;letter-spacing:0}
+      .panel{fill:#fff;stroke:#d9e2ef;stroke-width:1.3;filter:url(#shadow)}
+      .card{stroke:#d5e0ee;stroke-width:1.15;filter:url(#soft)}
+      .line{fill:none;stroke:#1f2937;stroke-width:2.2;marker-end:url(#arrow)}
+      .lineBlue{fill:none;stroke:#2563eb;stroke-width:2.4;marker-end:url(#arrowBlue)}
+      .lineGreen{fill:none;stroke:#059669;stroke-width:2.4;marker-end:url(#arrowGreen)}
+      .skip{fill:none;stroke:#7c3aed;stroke-width:2;stroke-dasharray:8 7;marker-end:url(#arrow);opacity:.85}
+    </style>
+  </defs>
+  <rect width="2200" height="1300" fill="url(#bg)"/>
+  <text x="74" y="80" class="title">GVBF Flow 模式：学习从当前帧到下一帧的运动场</text>
+  <text x="76" y="116" class="sub">配置：gvbf_mode = flow，gvbf_model_config = 1_1_64。模型只预测一个输出 vθ，表示每个像素从 x0 走向 x1 的变化方向。</text>
+  <text x="1800" y="82" class="s">对应代码：_flow_loss 与 _predict_next_frame</text>
+  <text x="1800" y="108" class="s">主干：UNet2DModel，输出 1 通道</text>
+
+  <g transform="translate(70 155)">
+    <rect class="panel" x="0" y="0" width="690" height="980" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">A</text>
+    <text x="82" y="52" class="panelTitle">训练目标：直接学习帧间位移</text>
+    <text x="82" y="84" class="b">Flow 模式没有显式噪声分支，核心问题只有一个：从 x0 到 x1 应该怎么移动？</text>
+
+    <g transform="translate(56 145)">
+      <rect class="card" x="0" y="0" width="180" height="130" rx="18" fill="url(#blue)" stroke="#9bd7ed"/>
+      <path d="M23 92 C52 42 78 76 106 48 C134 18 156 63 168 32" fill="none" stroke="#2563eb" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="56" cy="45" r="14" fill="#60a5fa"/>
+      <text x="36" y="168" class="h">当前帧 x0</text>
+    </g>
+    <g transform="translate(56 375)">
+      <rect class="card" x="0" y="0" width="180" height="130" rx="18" fill="url(#green)" stroke="#9fdab6"/>
+      <path d="M23 96 C56 38 87 84 118 54 C145 28 164 70 172 39" fill="none" stroke="#059669" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="82" cy="62" r="14" fill="#34d399"/>
+      <text x="36" y="168" class="h">目标帧 x1</text>
+    </g>
+
+    <g transform="translate(330 246)">
+      <rect class="card" x="0" y="0" width="280" height="168" rx="20" fill="#fff"/>
+      <text x="24" y="38" class="h">随机采样中间时刻</text>
+      <text x="24" y="70" class="math">xt = (1 - t)x0 + t x1</text>
+      <line x1="32" y1="108" x2="248" y2="108" stroke="#cbd5e1" stroke-width="11" stroke-linecap="round"/>
+      <circle cx="70" cy="108" r="14" fill="#60a5fa"/>
+      <circle cx="213" cy="108" r="14" fill="#34d399"/>
+      <circle cx="138" cy="108" r="17" fill="#fff" stroke="#12213b" stroke-width="4"/>
+      <text x="94" y="144" class="s">t 是随机时间点</text>
+    </g>
+    <path class="lineBlue" d="M250 205 C292 210 302 273 330 302"/>
+    <path class="lineGreen" d="M250 435 C293 430 302 371 330 354"/>
+
+    <g transform="translate(187 580)">
+      <rect x="0" y="0" width="315" height="148" rx="24" fill="url(#dark)" filter="url(#soft)"/>
+      <text x="32" y="42" class="whiteH">U-Net 向量场网络</text>
+      <text x="32" y="70" class="whiteB">输入：xt 和时间 t</text>
+      <text x="32" y="98" class="whiteB">输出：运动场 vθ</text>
+      <text x="32" y="124" class="whiteB">每个像素一个变化量</text>
+    </g>
+    <path class="line" d="M470 414 C470 500 390 542 350 580"/>
+
+    <g transform="translate(175 800)">
+      <rect class="card" x="0" y="0" width="340" height="118" rx="20" fill="url(#green)" stroke="#9fdab6"/>
+      <text x="28" y="39" class="h">唯一输出头：运动 vθ</text>
+      <text x="28" y="70" class="math">vθ ≈ x1 - x0</text>
+      <text x="28" y="98" class="mono">L = MSE(vθ, x1 - x0)</text>
+    </g>
+    <path class="lineGreen" d="M345 728 C345 760 345 775 345 800"/>
+  </g>
+
+  <g transform="translate(805 155)">
+    <rect class="panel" x="0" y="0" width="1325" height="640" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">B</text>
+    <text x="82" y="52" class="panelTitle">U-Net 主干：单输出运动场</text>
+    <text x="82" y="84" class="b">Flow 的 U-Net 与 biflow 使用同类编码器-解码器，但输出通道数是 1；没有 α 噪声条件，只有时间 t 的嵌入。</text>
+
+    <g transform="translate(55 278)">
+      <rect class="card" x="0" y="0" width="125" height="130" rx="18" fill="url(#blue)" stroke="#9bd7ed"/>
+      <text x="24" y="38" class="h">输入</text><text x="24" y="70" class="math">xt</text><text x="20" y="101" class="s">1 × H × W</text>
+    </g>
+    <g transform="translate(430 96)">
+      <rect class="card" x="0" y="0" width="450" height="90" rx="20" fill="url(#purple)" stroke="#c4b5fd"/>
+      <text x="28" y="36" class="h">时间嵌入</text>
+      <text x="28" y="65" class="math">t → timestep embedding → Linear → SiLU → Linear</text>
+    </g>
+    <path class="line" d="M655 186 C655 220 655 235 655 260"/>
+
+    <g transform="translate(210 250) scale(0.88)">
+      <text x="0" y="-22" class="h">编码器</text>
+      <rect x="0" y="30" width="92" height="124" rx="10" fill="#dff4ff" stroke="#9bd7ed"/><text x="18" y="83" class="h">Conv</text><text x="18" y="111" class="mono">1→64</text>
+      <rect x="142" y="40" width="80" height="114" rx="10" fill="#dbeafe" stroke="#93c5fd"/><text x="158" y="89" class="h">Down</text><text x="165" y="116" class="mono">64</text>
+      <rect x="272" y="54" width="70" height="100" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="285" y="98" class="h">Down</text><text x="285" y="123" class="mono">128</text>
+      <rect x="392" y="70" width="60" height="84" rx="10" fill="#93c5fd" stroke="#3b82f6"/><text x="399" y="106" class="h">Down</text><text x="398" y="128" class="mono">128</text>
+      <rect x="502" y="88" width="52" height="66" rx="10" fill="#c4b5fd" stroke="#8b5cf6"/><text x="509" y="115" class="h">Attn</text><text x="509" y="135" class="mono">256</text>
+      <path class="line" d="M92 92 H142"/><path class="line" d="M222 97 H272"/><path class="line" d="M342 104 H392"/><path class="line" d="M452 114 H502"/>
+      <text x="620" y="-22" class="h">解码器</text>
+      <rect x="620" y="88" width="52" height="66" rx="10" fill="#ddd6fe" stroke="#8b5cf6"/><text x="635" y="115" class="h">Up</text><text x="628" y="135" class="mono">256</text>
+      <rect x="730" y="70" width="60" height="84" rx="10" fill="#c7d2fe" stroke="#6366f1"/><text x="747" y="106" class="h">Up</text><text x="737" y="128" class="mono">128</text>
+      <rect x="850" y="54" width="70" height="100" rx="10" fill="#bfdbfe" stroke="#60a5fa"/><text x="872" y="98" class="h">Up</text><text x="860" y="123" class="mono">128</text>
+      <rect x="980" y="40" width="80" height="114" rx="10" fill="#dbeafe" stroke="#93c5fd"/><text x="1004" y="89" class="h">Up</text><text x="1003" y="116" class="mono">64</text>
+      <rect x="1115" y="30" width="92" height="124" rx="10" fill="url(#green)" stroke="#9fdab6"/><text x="1132" y="83" class="h">输出卷积</text><text x="1135" y="111" class="mono">64→1</text>
+      <path class="line" d="M554 121 H620"/><path class="line" d="M672 121 H730"/><path class="line" d="M790 112 H850"/><path class="line" d="M920 104 H980"/><path class="lineGreen" d="M1060 97 H1115"/>
+      <path class="skip" d="M42 25 C230 -58 775 -55 1160 25"/>
+      <path class="skip" d="M182 38 C330 -18 725 -10 1018 38"/>
+      <path class="skip" d="M305 52 C430 5 660 10 884 52"/>
+      <text x="378" y="210" class="s" fill="#6d28d9">跳跃连接保留高分辨率细节，使输出运动场更精细。</text>
+    </g>
+  </g>
+
+  <g transform="translate(805 845)">
+    <rect class="panel" x="0" y="0" width="1325" height="290" rx="24"/>
+    <circle cx="44" cy="44" r="25" fill="#12213b"/><text x="33" y="55" class="letter">C</text>
+    <text x="82" y="52" class="panelTitle">推理流程：从 x0 沿运动场积分到下一帧</text>
+    <text x="82" y="84" class="b">测试时只给当前帧。Flow 把 U-Net 当成连续时间向量场，用 Heun ODE 求解器从 t=0 积分到 t=1。</text>
+    <g transform="translate(65 132)"><rect class="card" x="0" y="0" width="170" height="82" rx="18" fill="url(#blue)" stroke="#9bd7ed"/><text x="24" y="33" class="h">初始状态</text><text x="24" y="59" class="mono">y0 = x0</text></g>
+    <g transform="translate(300 132)"><rect class="card" x="0" y="0" width="190" height="82" rx="18" fill="url(#dark)" stroke="#243251"/><text x="24" y="33" class="whiteH">U-Net 向量场</text><text x="24" y="60" class="whiteB">dy/dt = vθ(y,t)</text></g>
+    <g transform="translate(560 132)"><rect class="card" x="0" y="0" width="165" height="82" rx="18" fill="url(#purple)" stroke="#c4b5fd"/><text x="24" y="33" class="h">ODE 求解</text><text x="24" y="59" class="mono">Heun 0→1</text></g>
+    <g transform="translate(795 132)"><rect class="card" x="0" y="0" width="170" height="82" rx="18" fill="url(#green)" stroke="#9fdab6"/><text x="24" y="33" class="h">下一帧</text><text x="24" y="59" class="mono">x̂1</text></g>
+    <g transform="translate(1040 132)"><rect class="card" x="0" y="0" width="195" height="82" rx="18" fill="#fff" stroke="#d8e2ef"/><text x="24" y="33" class="h">多步预测</text><text x="24" y="59" class="s">把 x̂1 再作为输入</text></g>
+    <path class="line" d="M235 173 H300"/><path class="lineBlue" d="M490 173 H560"/><path class="lineGreen" d="M725 173 H795"/><path class="line" d="M965 173 H1040"/>
+  </g>
+
+  <g transform="translate(240 1190)">
+    <rect x="0" y="0" width="1720" height="70" rx="20" fill="#fff" stroke="#d9e2ef" filter="url(#soft)"/>
+    <text x="30" y="43" class="h">一句话总结：</text>
+    <text x="165" y="43" class="b">Flow 模式最像“学习速度场”，它不建模噪声，只学习从当前帧到目标帧的直接变化方向。</text>
+  </g>
+</svg>

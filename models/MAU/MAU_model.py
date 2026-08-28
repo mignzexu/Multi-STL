@@ -3,6 +3,11 @@ from torch import nn
 import math
 from .utils import (reshape_patch, reshape_patch_back)
 
+try:
+    from ..Model_system import distribute_model_layers
+except ImportError:
+    from models.Model_system import distribute_model_layers
+
 
 class Main(nn.Module):
 
@@ -145,12 +150,27 @@ class MAU_Model(nn.Module):
             self.num_hidden[-1] * 2, self.num_hidden[-1], kernel_size=1, stride=1, padding=0)
         self.conv_last_sr = nn.Conv2d(
             self.frame_channel * 2, self.frame_channel, kernel_size=1, stride=1, padding=0)
+        self._layer_devices = None
+
+    def _get_layer_groups(self, devices):
+        main_dev, hid_dev = devices[0], devices[1]
+        return [
+            (self.cell_list, hid_dev),
+            (self.encoders, main_dev),
+            (self.decoders, main_dev),
+            (self.srcnn, main_dev),
+            (self.merge, main_dev),
+            (self.conv_last_sr, main_dev),
+        ]
 
     def forward(self, frames_tensor, mask_true, **kwargs):
         # [batch, length, height, width, channel] -> [batch, length, channel, height, width]
-        device = frames_tensor.device
-        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous()
-        mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous()
+        distribute_model_layers(self, self.configs, frames_tensor.device)
+        main_dev = self._layer_devices[0]
+        hid_dev = self._layer_devices[1]
+
+        frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous().to(main_dev, non_blocking=True)
+        mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous().to(main_dev, non_blocking=True)
 
         batch_size = frames.shape[0]
         height = frames.shape[3] // self.sr_size
@@ -170,9 +190,9 @@ class MAU_Model(nn.Module):
                 in_channel = self.num_hidden[layer_idx - 1]
             for i in range(self.tau):
                 tmp_t.append(torch.zeros(
-                    [batch_size, in_channel, height, width]).to(device))
+                    [batch_size, in_channel, height, width], device=hid_dev))
                 tmp_s.append(torch.zeros(
-                    [batch_size, in_channel, height, width]).to(device))
+                    [batch_size, in_channel, height, width], device=hid_dev))
             T_pre.append(tmp_t)
             S_pre.append(tmp_s)
 
@@ -190,9 +210,9 @@ class MAU_Model(nn.Module):
             if t == 0:
                 for i in range(self.num_layers):
                     zeros = torch.zeros(
-                        [batch_size, self.num_hidden[i], height, width]).to(device)
+                        [batch_size, self.num_hidden[i], height, width], device=hid_dev)
                     T_t.append(zeros)
-            S_t = frames_feature
+            S_t = frames_feature.to(hid_dev, non_blocking=True)
             for i in range(self.num_layers):
                 t_att = T_pre[i][-self.tau:]
                 t_att = torch.stack(t_att, dim=0)
@@ -201,7 +221,7 @@ class MAU_Model(nn.Module):
                 S_pre[i].append(S_t)
                 T_t[i], S_t = self.cell_list[i](T_t[i], S_t, t_att, s_att)
                 T_pre[i].append(T_t[i])
-            out = S_t
+            out = S_t.to(main_dev, non_blocking=True)
 
             for i in range(len(self.decoders)):
                 out = self.decoders[i](out)
